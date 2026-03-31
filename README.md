@@ -176,9 +176,9 @@ Follow this sequence to ensure your changes are safely integrated.
 ```mermaid
 graph TD
     Start([Start Task]) --> Status[git status]
-    Status --> Main[git checkout main]
+    Status --> Main[git switch main]
     Main --> Pull[git pull origin main]
-    Pull --> Branch[git checkout -b feature/your-part]
+    Pull --> Branch[git switch -c feature/your-part]
     Branch --> Work[Code/Write LaTeX]
     Work --> Status2[git status]
     Status2 --> Add[git add .]
@@ -193,14 +193,23 @@ graph TD
     Fix --> Continue[git rebase --continue]
     Continue --> PushForce[git push origin feature/your-part --force]
     PushForce --> PR
+
+    %% Styling (QVRS Standards)
+    classDef cmd fill:#2E45B8,color:#fff,stroke:#141F52
+    classDef logical fill:#C91D42,color:#fff,stroke:#A31735
+    classDef decision fill:#E3120B,color:#fff,stroke:#B20E08
+
+    class Status,Main,Pull,Branch,Status2,Add,Commit,Push,PR,Fetch,Rebase,Continue,PushForce cmd
+    class Start,Work,Merge,Fix logical
+    class Conflict decision
 ```
 
 **A. Before you start working**
 1. Open RStudio Terminal.
 2. `git status` — Check which branch you are on.
-3. `git checkout main` — Switch to the main branch.
+3. `git switch main` — Switch to the main branch.
 4. `git pull origin main` — Get the latest updates from the team.
-5. `git checkout -b feature/your-part` — Create a new branch for your specific task.
+5. `git switch -c feature/your-part` — Create a new branch for your specific task.
 
 **B. When you finish a part/task**
 1. `git status` — Verify which files you modified.
