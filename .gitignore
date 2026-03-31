@@ -10,10 +10,9 @@ renv/staging/
 
 # Data (raw CSVs may be large; processed outputs excluded)
 # Keep raw/ tracked only if files are under 50MB
-data/processed/*.csv
+!*.csv
 data/processed/*.rds
 output/models/*.rds
-output/predictions/*.csv
 
 # LaTeX auxiliary and output files
 *.aux
@@ -32,7 +31,6 @@ output/predictions/*.csv
 
 # Output models and predictions
 output/models/*.rds
-output/predictions/*.csv
 !output/.gitkeep
 
 # OS
