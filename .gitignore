@@ -15,7 +15,7 @@ data/processed/*.rds
 output/models/*.rds
 output/predictions/*.csv
 
-# LaTeX auxiliary files
+# LaTeX auxiliary and output files
 *.aux
 *.log
 *.out
@@ -28,7 +28,12 @@ output/predictions/*.csv
 *.nav
 *.snm
 *.vrb
-paper/*.pdf
+*.pdf
+
+# Output models and predictions
+output/models/*.rds
+output/predictions/*.csv
+!output/.gitkeep
 
 # OS
 .DS_Store

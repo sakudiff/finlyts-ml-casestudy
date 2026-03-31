@@ -2,16 +2,38 @@
 
 **Course:** FINLYTS
 **Professor:** Bobby Baylon Jr.
-**Status:** In Progress — Company selection pending
+**Status:** In Progress — Banking Sector (BPI & BDO)
 
 ---
 
 ## Project Overview
 
 This project develops and compares econometric and machine learning models to
-predict multi-horizon stock returns of a selected Philippine Stock Exchange (PSE)
-listed company. The analysis spans three prediction horizons and five model
-families, evaluated on both statistical and financial performance metrics.
+predict multi-horizon stock returns of Bank of the Philippine Islands (BPI)
+and BDO Unibank (BDO). The analysis spans three prediction horizons and five
+model families, evaluated on both statistical and financial performance metrics.
+
+---
+
+## Role Assignments
+
+| Part | Person Assigned |
+| :--- | :--- |
+| Introduction | Jehan |
+| Literature Review | Aaron and Carlos |
+| Data and Feature Engineering | Aaron |
+| Methodology | Aaron |
+| Results | Carlos |
+| Discussion | Aaron and Carlos |
+| Conclusion and Recommendations | Keira |
+| References | Aaron |
+| Appendix | Aaron |
+| 01 Data Pull Script | Jehan |
+| 02 Feature Engineering Script | Aaron |
+| 03 OLS Baseline Script | Carlos |
+| 04 RF and XGBoost Script | Aaron |
+| 05 SVM and ANN Script | Aaron |
+| 06 Evaluation Script | Aaron and Keira |
 
 ---
 
@@ -20,8 +42,8 @@ families, evaluated on both statistical and financial performance metrics.
 The final deliverable is a full academic paper structured as follows.
 
 **Section 1: Introduction**
-Justification for the selected stock pair, rationale for the model choices,
-and the specific research question being answered within the context of
+Justification for the selected stock pair (BPI & BDO), rationale for the model
+choices, and the specific research question being answered within the context of
 Philippine capital markets.
 
 **Section 2: Literature Review**
@@ -33,7 +55,7 @@ Data sources and sample period (2019 to present). Construction of all three
 target variables with explicit formulas. All mandatory technical indicators
 (MA, EMA, RSI, MACD, rolling volatility), cross-asset features (PSEi, competitor
 returns, macro variable), feature transformations (interaction term, squared
-volatility), and the COVID regime dummy. Descriptive statistics table.
+volatility), and the COVID/Volatility regime dummy. Descriptive statistics table.
 
 **Section 4: Methodology**
 Time-series split rationale. OLS benchmark specification. Architecture and
@@ -51,7 +73,7 @@ table. Predicted vs. actual plot for the best-performing model.
 Economic interpretation of all findings. Model comparison with financial
 reasoning. Horizon analysis (why short-horizon may differ from long-horizon
 predictability). Feature importance interpretation in terms of momentum, trend,
-and macro channels. COVID structural break effects on coefficients. Assessment
+and macro channels. Structural break effects on coefficients. Assessment
 of whether results support or challenge weak-form EMH for the PSE.
 Overfitting analysis comparing training and testing performance.
 
@@ -121,17 +143,6 @@ Separate models are estimated for each target. No look-ahead bias.
 
 ---
 
-## Role Assignments
-
-| Person | Primary Sections | RMD Scripts |
-|---|---|---|
-| Person 1 | Section 3 (data), Appendix | 01_data_pull.Rmd |
-| Person 2 | Section 2, Section 4 (writing), References | 02_feature_engineering.Rmd (co-owner) |
-| Person 3 | Section 5 | 02 (co-owner), 03, 04, 06 |
-| Person 4 | Section 1, Section 6, Section 7 | 05_models_svm_ann.Rmd |
-
----
-
 ## Critical Rules
 
 1. Time-series split only. `train_test_split(shuffle=TRUE)` equivalent in R is forbidden.
@@ -142,21 +153,113 @@ Separate models are estimated for each target. No look-ahead bias.
 
 ---
 
+## Workflow & Tooling
+
+### 1. GitHub CLI Guide (`gh`)
+Use the RStudio Terminal to manage the repository without leaving the IDE.
+
+| Command | Action |
+| :--- | :--- |
+| `gh auth login` | Initial setup/authentication |
+| `gh pr create` | Create a Pull Request for your branch |
+| `gh pr list` | View active PRs in the group |
+| `gh pr checkout <num>` | Pull a teammate's PR locally to test |
+| `gh pr merge` | Merge your PR after review |
+| `gh browse` | Open the repository in your browser |
+| `gh run list` | Check status of GitHub Actions (if any) |
+
+### 2. Git Step-by-Step Workflow
+
+Follow this sequence to ensure your changes are safely integrated.
+
+#### Workflow Visualization
+```mermaid
+graph TD
+    Start([Start Task]) --> Status[git status]
+    Status --> Main[git checkout main]
+    Main --> Pull[git pull origin main]
+    Pull --> Branch[git checkout -b feature/your-part]
+    Branch --> Work[Code/Write LaTeX]
+    Work --> Status2[git status]
+    Status2 --> Add[git add .]
+    Add --> Commit[git commit -m '...']
+    Commit --> Push[git push origin feature/your-part]
+    Push --> PR[gh pr create]
+    PR --> Conflict{Conflicts?}
+    Conflict -- No --> Merge([Merge PR])
+    Conflict -- Yes --> Fetch[git fetch origin]
+    Fetch --> Rebase[git rebase origin/main]
+    Rebase --> Fix[Fix Conflicts & git add]
+    Fix --> Continue[git rebase --continue]
+    Continue --> PushForce[git push origin feature/your-part --force]
+    PushForce --> PR
+```
+
+**A. Before you start working**
+1. Open RStudio Terminal.
+2. `git status` — Check which branch you are on.
+3. `git checkout main` — Switch to the main branch.
+4. `git pull origin main` — Get the latest updates from the team.
+5. `git checkout -b feature/your-part` — Create a new branch for your specific task.
+
+**B. When you finish a part/task**
+1. `git status` — Verify which files you modified.
+2. `git add .` — Stage your changes (ensure no large data files are staged).
+3. `git commit -m "Description of what you did"` — Save your progress locally.
+4. `git push origin feature/your-part` — Upload your branch to GitHub.
+5. `gh pr create` — Open a Pull Request for the team to review.
+
+**C. Handling Conflicts (The Rebase Method)**
+If someone else modified the same file and merged it before you:
+1. `git fetch origin` — Update your local knowledge of the remote repo.
+2. `git rebase origin/main` — Re-apply your changes on top of the latest `main`.
+3. Fix any conflicts in the files (look for `<<<<<<< HEAD`).
+4. `git add <fixed-file>`
+5. `git rebase --continue`
+6. `git push origin feature/your-part --force` — Update your PR with the clean history.
+
+**Best Practice:** Always run `git status` before `git add` and before `git push` to avoid accidentally committing temporary files or working on the wrong branch.
+
+### 3. LaTeX Workflow
+
+The final paper is compiled from `paper/main.tex`.
+
+| Command | Action |
+| :--- | :--- |
+| `pdflatex main.tex` | Compile the document (run twice for refs) |
+| `bibtex main` | Process references in `references.bib` |
+| `latexmk -pdf main.tex` | **Recommended:** One command to handle all steps |
+| `latexmk -c` | Clean up auxiliary files (`.aux`, `.log`, etc.) |
+
+**Step-by-Step Guide:**
+1. **Export:** Run your R scripts to save tables (`.tex`) and figures (`.png`/`.pdf`) into the `paper/tables/` and `paper/figures/` folders.
+2. **Update Refs:** Add any new citations to `paper/references.bib` in APA format.
+3. **Edit:** Update your assigned section in `paper/main.tex`. Use `\input{tables/your_table.tex}` for tables.
+4. **Compile:** Run `latexmk -pdf main.tex` in the terminal inside the `paper/` directory.
+5. **Review:** Open the generated `main.pdf` to check formatting and citations.
+
+**Best Practice:**
+- **Modular Tables:** Do not manually type tables. Export them from R.
+- **Figures:** Place all plots in `paper/figures/`.
+- **Version Control:** Only commit `.tex`, `.bib`, and image files. Do **not** commit `.pdf`, `.aux`, or `.log` files.
+
+---
+
 ## Data Sources
 
 All data pulled programmatically via `tidyquant::tq_get()` from Yahoo Finance.
 
 | Series | Yahoo Finance Ticker |
 |---|---|
-| Target stock | TBD.PS |
-| Competitor stock | TBD.PS |
+| Target stock | BPI.PS |
+| Competitor stock | BDO.PS |
 | PSEi Index | ^PSEi |
 | USD/PHP Exchange Rate | PHP=X |
-| Bitcoin | BTC-USD |
-| WTI Crude Oil | CL=F |
 
-**Note:** Company tickers will be confirmed and updated once the group finalizes
-stock selection. BDO.PS vs BPI.PS (banking sector) is the recommended default.
+### Project Configuration
+- **Industry:** Banking
+- **Macro Variables:** USD/PHP Exchange Rate, (Second Variable TBA)
+- **Regime Definition:** High Volatility (1 when 20-day vol > 2x historical average)
 
 ---
 
