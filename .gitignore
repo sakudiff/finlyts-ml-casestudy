@@ -1,0 +1,44 @@
+# R
+.RData
+.Rhistory
+.Rproj.user/
+*.Rproj
+renv/library/
+renv/.cache/
+renv/local/
+renv/staging/
+
+# Data (raw CSVs may be large; processed outputs excluded)
+# Keep raw/ tracked only if files are under 50MB
+data/processed/*.csv
+data/processed/*.rds
+output/models/*.rds
+output/predictions/*.csv
+
+# LaTeX auxiliary files
+*.aux
+*.log
+*.out
+*.toc
+*.bbl
+*.blg
+*.synctex.gz
+*.fls
+*.fdb_latexmk
+*.nav
+*.snm
+*.vrb
+paper/*.pdf
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Credentials / environment
+.env
+*.pem
+secrets.*
+
+# Planner
+planner/

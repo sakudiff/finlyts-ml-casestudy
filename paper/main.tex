@@ -1,0 +1,295 @@
+\documentclass[12pt]{article}
+
+% Packages for Advanced Formatting
+\usepackage{geometry}
+\geometry{margin=1in}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{tikz}
+\usetikzlibrary{calc}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\graphicspath{{.}}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{listings}
+\usepackage{setspace}
+\usepackage{titlesec}
+\usepackage{ragged2e}
+\usepackage{indentfirst}
+\usepackage{csquotes}
+\usepackage[hidelinks]{hyperref}
+\usepackage[style=apa, backend=biber]{biblatex}
+\addbibresource{references.bib}
+
+% Color Definitions
+\definecolor{dlsugreen}{HTML}{00703C}
+
+% R Code Listings Configuration
+\lstset{
+  language=R,
+  basicstyle=\small\ttfamily,
+  breaklines=true,
+  keepspaces=true,
+  columns=flexible,
+  showstringspaces=false,
+  keywordstyle=\color{blue},
+  commentstyle=\color{dlsugreen},
+  stringstyle=\color{purple},
+  backgroundcolor=\color{gray!5},
+  frame=single,
+  framerule=0pt,
+  xleftmargin=10pt,
+  xrightmargin=10pt,
+  aboveskip=15pt,
+  belowskip=15pt
+}
+
+% APA 7th Edition: Headings & Indents
+\titleformat{\section}{\normalfont\Large\bfseries\centering}{\thesection}{1em}{}
+\titleformat{\subsection}{\normalfont\large\bfseries}{\thesubsection}{1em}{}
+\titlespacing*{\section}{0pt}{12pt}{6pt}
+\titlespacing*{\subsection}{0pt}{12pt}{6pt}
+\setlength{\bibhang}{0.5in}
+
+\begin{document}
+\doublespacing
+\RaggedRight
+\setlength{\parindent}{0.5in}
+
+\begin{titlepage}
+    \centering
+
+    % Top Logo and Name (Inline)
+    \vspace*{0.5cm}
+    \begin{tabular}{c@{\quad}l}
+        \raisebox{-2.0ex}{\includegraphics[height=3.5em]{dlsu_logo.png}} & 
+        \huge \textbf{\color{dlsugreen} De La Salle University}
+    \end{tabular}
+    
+    \vfill
+
+    % Central Seal
+    \includegraphics[width=0.25\textwidth]{dlsu_logo.png} \\
+
+    \vfill
+
+    % Project Title
+    {\LARGE \textbf{Hybrid Econometric and Machine Learning Modeling of Philippine Stock Returns}} \\
+    \vspace{0.5cm}
+    {\large A Multi-Horizon Predictive Analysis of [COMPANY NAME] on the Philippine Stock Exchange} \\
+    \vspace{1.5cm}
+
+    \begin{minipage}{0.8\textwidth}
+        \centering
+        {\normalsize Final Project Case Study \\ {} Presented to \\ {} \textbf{Professor Bobby Baylon Jr.} \\ {} Department of Finance}
+    \end{minipage}
+
+    \vfill
+
+    \begin{minipage}{0.8\textwidth}
+        \centering
+        {\normalsize in partial fulfillment of the requirements for the course \\ {} \textbf{FINLYTS}}
+    \end{minipage}
+
+    \vfill
+
+    {\normalsize By:} \\
+    \vspace{0.5cm}
+    {\normalsize 
+    ABRIL, Jehan \\
+    {} GO, Keira Ley Arcala \\
+    {} SISON, Aaron Joshua Estacio \\
+    {} VALENCIA, Carlos Martin Belangel}
+
+    \vfill
+
+    {\normalsize \today}
+\end{titlepage}
+
+\newpage
+\tableofcontents
+\newpage
+
+% ABSTRACT
+\begin{abstract}
+    % TODO: Write last. 150-200 words.
+    % Cover: objective, data, models used, key finding, horizon comparison result.
+\end{abstract}
+
+\newpage
+
+% SECTION 1: INTRODUCTION
+\section{Introduction}
+\label{sec:intro}
+% ASSIGNED TO: Person 4
+% Approx. length: 1.5 to 2 pages
+%
+% Address all three of the following:
+% 1. Why this stock and competitor pair? Justify on liquidity,
+% sector relevance, and economic importance.
+% 2. Why these five models? What does OLS offer that ML cannot,
+% and vice versa?
+% 3. What is the specific research question being answered?
+% Frame it around multi-horizon predictability in a frontier market.
+
+% TODO: Write content here.
+
+\subsection{Objectives}
+\begin{itemize}
+    \item \textbf{[Primary Objective]:} Predict the next-period returns of a PSE-listed company using hybrid models.
+    \item \textbf{[Secondary Objective]:} Compare the predictive power across one-day, three-day, and five-day horizons.
+\end{itemize}
+
+% SECTION 2: LITERATURE REVIEW
+\section{Literature Review}
+\label{sec:litreview}
+% ASSIGNED TO: Person 2
+% Approx. length: 3 to 4 pages
+%
+% Cover the following threads:
+% 1. Efficient Market Hypothesis (weak form) and its implications
+% for return predictability in emerging and frontier markets.
+% 2. Prior work comparing ML models to OLS in stock return prediction.
+% Key papers: Gu, Kelly, Xiu (2020, RFS); Krauss et al. (2017);
+% Fischer and Krauss (2018).
+% 3. PSE-specific or Philippine capital market studies if available.
+% 4. Multi-horizon forecasting in finance literature.
+%
+% All citations must be APA 7 in the .bib file.
+
+% TODO: Write content here.
+
+% SECTION 3: DATA AND FEATURE ENGINEERING
+\section{Data and Feature Engineering}
+\label{sec:data}
+% ASSIGNED TO: Person 1 (data sourcing) + Person 2 (writing)
+% Approx. length: 3 to 4 pages plus tables
+
+\subsection{Data Sources and Sample Period}
+% TODO
+
+\subsection{Target Variable Construction}
+
+The three prediction targets are constructed as follows. The one-day ahead log return is:
+
+\begin{equation}
+    r_{t+1} = \log\left(\frac{P_{t+1}}{P_t}\right)
+    \label{eq:r1}
+\end{equation}
+
+The three-day and five-day cumulative returns are:
+
+\begin{equation}
+    r_{t:t+3} = \sum_{i=1}^{3} r_{t+i}
+    \label{eq:r3}
+\end{equation}
+
+\begin{equation}
+    r_{t:t+5} = \sum_{i=1}^{5} r_{t+i}
+    \label{eq:r5}
+\end{equation}
+
+Separate models are estimated for each target. All predictive features use only information available at time $t$ or earlier to eliminate look-ahead bias.
+
+\subsection{Technical Indicators}
+% TODO: Define each mandatory indicator with formula
+
+\subsection{Cross-Asset and Market Features}
+% TODO
+
+\subsection{Feature Transformations and Regime Variable}
+% TODO: Define COVID dummy (1 for 2020-03-01 to 2021-06-30)
+
+\subsection{Descriptive Statistics}
+% TODO: Insert Table 1
+% \input{tables/descriptive_stats.tex}
+
+% SECTION 4: METHODOLOGY
+\section{Methodology}
+\label{sec:methodology}
+% ASSIGNED TO: Person 2 (writing) + Person 3 (technical content)
+
+\subsection{Technical Workflow}
+% TODO: Detail the computational pipeline from ingestion to modeling.
+
+\subsection{Data Splitting}
+% TODO
+
+\subsection{OLS Benchmark Specification}
+% TODO
+
+\subsection{Machine Learning Models}
+% Random Forest, SVM, XGBoost, Artificial Neural Network specifications.
+
+\subsection{Hyperparameter Tuning}
+% TODO
+
+\subsection{Evaluation Metrics}
+
+Performance is assessed using the following metrics. Root Mean Squared Error penalizes large errors:
+
+\begin{equation}
+    \text{RMSE} = \sqrt{\frac{1}{n}\sum_{t=1}^{n}(\hat{r}_t - r_t)^2}
+\end{equation}
+
+Mean Absolute Error provides a scale-consistent measure:
+
+\begin{equation}
+    \text{MAE} = \frac{1}{n}\sum_{t=1}^{n}|\hat{r}_t - r_t|
+\end{equation}
+
+Directional Accuracy measures economically relevant sign prediction:
+
+\begin{equation}
+    \text{DA} = \frac{1}{n}\sum_{t=1}^{n} \mathbf{1}\left[\text{sign}(\hat{r}_t) = \text{sign}(r_t)\right]
+\end{equation}
+
+% SECTION 5: RESULTS
+\section{Results}
+\label{sec:results}
+% ASSIGNED TO: Person 3
+
+\subsection{Visual Analytics}
+% TODO
+
+\subsection{Regression Results and Model Performance}
+% TODO
+
+% SECTION 6: DISCUSSION
+\section{Discussion}
+\label{sec:discussion}
+% ASSIGNED TO: Person 4
+
+\subsection{Model Comparison}
+% TODO
+
+\subsection{Horizon Analysis}
+% TODO
+
+\subsection{Feature Importance Interpretation}
+% TODO
+
+\subsection{Regime Effects}
+% TODO
+
+% SECTION 7: CONCLUSION AND RECOMMENDATIONS
+\section{Conclusion}
+\label{sec:conclusion}
+% ASSIGNED TO: Person 4
+
+% REFERENCES
+\printbibliography[title={References}]
+
+\newpage
+\appendix
+\section{Technical Implementation Code} \label{sec:appendix_code}
+{} The full source code for this analysis is available at:
+\texttt{[INSERT GITHUB REPO URL HERE]}
+
+All scripts are numbered sequentially (\texttt{01} through \texttt{06}) and
+must be run in order. Data is pulled programmatically via the \texttt{tidyquant}
+package. No manual data downloads are required.
+
+\end{document}

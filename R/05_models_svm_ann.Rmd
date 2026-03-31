@@ -1,0 +1,26 @@
+---
+title: "05_models_svm_ann"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# PURPOSE: Estimate SVM and ANN models across all three horizons
+# ASSIGNED TO: Person 4 (Interpretation Lead)
+# DEPENDS ON: 02_feature_engineering.R output in data/processed/
+
+# REQUIREMENTS:
+# SVM: Features MUST be standardized before fitting. Scaling fit on training set only. Use kernlab engine.
+# ANN: Use nnet package. Architecture: one hidden layer, ReLU activation, dropout.
+# Both: Output RMSE, MAE, R-squared, Directional Accuracy per horizon.
+
+```{r main}
+library(tidymodels)
+library(kernlab)
+library(nnet)
+library(tidyverse)
+
+message("05_models_svm_ann.R: Not yet implemented.")
+```

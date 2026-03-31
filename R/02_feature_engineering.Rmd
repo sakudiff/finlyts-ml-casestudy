@@ -1,0 +1,32 @@
+---
+title: "02_feature_engineering"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# PURPOSE: Construct all mandatory features from rubric. NO LOOK-AHEAD BIAS.
+# ASSIGNED TO: Person 2 (Feature Engineering and EDA)
+# DEPENDS ON: 01_data_pull.R outputs in data/raw/
+
+# FEATURE CHECKLIST (rubric Section 4):
+# TREND: MA(5), MA(10), MA(20), EMA(12), EMA(26), MA ratio: MA5 / MA20
+# MOMENTUM: Lagged returns (lag_1, lag_2, lag_3), Momentum 5-day, Momentum 10-day, RSI(14), MACD and signal line
+# VOLATILITY: Rolling std dev (5-day, 10-day), Volatility ratio: vol5 / vol10
+# MARKET AND CROSS-ASSET: PSEi returns, Competitor stock returns, USD/PHP returns
+# TRANSFORMATIONS: Interaction term (momentum x volatility), Nonlinear (squared volatility)
+# REGIME: COVID dummy
+# TARGET VARIABLES: r_t1, r_t3, r_t5
+
+# CRITICAL: All features must use only data available at time t or earlier.
+# Use dplyr::lag() for all lookback windows.
+# Use dplyr::lead() for targets only, assigned as separate columns.
+
+```{r main}
+library(tidyquant)
+library(tidyverse)
+
+message("02_feature_engineering.R: Not yet implemented.")
+```

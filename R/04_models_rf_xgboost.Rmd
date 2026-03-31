@@ -1,0 +1,29 @@
+---
+title: "04_models_rf_xgboost"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# PURPOSE: Estimate Random Forest and XGBoost models across all three horizons
+# ASSIGNED TO: Person 3 (Modeling and Results)
+# DEPENDS ON: 02_feature_engineering.R output in data/processed/
+
+# REQUIREMENTS:
+# - Use tidymodels / parsnip interface
+# - Time-series cross-validation via rsample::rolling_origin() for tuning
+# - Hyperparameter tuning required on at least one model (recommend XGBoost)
+# - Grid search via tune::tune_grid() with TimeSeriesSplit-compatible CV
+# - Save feature importance plots to paper/figures/
+# - Save metrics to output/predictions/
+
+```{r main}
+library(tidymodels)
+library(ranger)
+library(xgboost)
+library(tidyverse)
+
+message("04_models_rf_xgboost.R: Not yet implemented.")
+```

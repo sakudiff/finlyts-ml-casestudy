@@ -1,0 +1,26 @@
+---
+title: "03_ols_baseline"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# PURPOSE: Estimate OLS benchmark model for all three horizons (t+1, t+3, t+5)
+# ASSIGNED TO: Person 3 (Modeling and Results)
+# DEPENDS ON: 02_feature_engineering.R output in data/processed/
+
+# REQUIREMENTS:
+# - Time-series split: first 70-80% training, remainder test
+# - Random splitting is NOT allowed
+# - Naive benchmark: previous return (lag_1) as prediction
+# - Output: RMSE, MAE, R-squared, Directional Accuracy per horizon
+# - Save coefficient table as LaTeX to paper/tables/ols_coefficients.tex
+
+```{r main}
+library(tidymodels)
+library(tidyverse)
+
+message("03_ols_baseline.R: Not yet implemented.")
+```

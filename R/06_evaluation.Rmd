@@ -1,0 +1,30 @@
+---
+title: "06_evaluation"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# PURPOSE: Aggregate all model results, produce final comparison tables and plots
+# ASSIGNED TO: Person 3 and Person 4 (joint)
+# DEPENDS ON: outputs from 03, 04, 05
+
+# DELIVERABLES:
+# - Table 1: RMSE across 5 models x 3 horizons
+# - Table 2: MAE across 5 models x 3 horizons
+# - Table 3: R-squared
+# - Table 4: Directional Accuracy
+# - Figure 1: Feature importance - RF
+# - Figure 2: Feature importance - XGBoost
+# - Figure 3: Predicted vs Actual (best model)
+# - Overfitting comparison: train vs test RMSE per model
+
+```{r main}
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+
+message("06_evaluation.R: Not yet implemented.")
+```

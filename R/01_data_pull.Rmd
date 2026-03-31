@@ -1,0 +1,39 @@
+---
+title: "01_data_pull"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# PURPOSE: Pull all required data from Yahoo Finance and save to data/raw/
+# ASSIGNED TO: Person 1 (Data Owner)
+
+# REQUIRED SERIES:
+# - Target stock:     [TICKER.PS]         (TBD - pending company selection)
+# - Competitor stock: [TICKER.PS]         (TBD - pending company selection)
+# - PSEi index:       ^PSEi
+# - USD/PHP rate:     PHP=X
+# - BTC:              BTC-USD
+# - WTI Crude Oil:    CL=F
+#
+# DATE RANGE: 2019-01-01 to present
+
+```{r main}
+library(tidyquant)
+library(tidyverse)
+
+START_DATE <- "2019-01-01"
+END_DATE   <- Sys.Date()
+
+# TODO: Replace with confirmed tickers after company selection
+TARGET_TICKER     <- "TBD.PS"
+COMPETITOR_TICKER <- "TBD.PS"
+
+# TODO: Pull data using tq_get() or getSymbols()
+# TODO: Align calendars and forward-fill PSE holidays
+# TODO: Save raw series to data/raw/ as CSV
+
+message("01_data_pull.R: Not yet implemented. Awaiting company selection.")
+```
