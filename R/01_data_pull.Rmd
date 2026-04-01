@@ -17,7 +17,7 @@ knitr::opts_chunk$set(
 ```
 
 # 01 Data Pull & Cleaning
-**Author:** Aaron (Data Owner)
+**Author:** Jehan & Aaron
 **Purpose:** Load raw financial data from Investing.com, standardize formats, and merge into a master time series.
 
 ## 1. Libraries and Data Loading
