@@ -4,7 +4,9 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(
+  root.dir = "/Users/Jehan/Documents/FINLYTS-Group-2/Final_Paper_Latex/finlyts-ml-casestudy"
+)
 ```
 
 # PURPOSE: Pull all required data from Yahoo Finance and save to data/raw/
@@ -23,15 +25,60 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r main}
 library(tidyquant)
 library(tidyverse)
+library(dplyr)
+library(tidyr)
+library(lubridate)
+library(zoo)
+```
 
-START_DATE <- "2019-01-01"
-END_DATE   <- Sys.Date()
+```{r}
+bpi <- read_csv("data/raw/bpi.csv")
+bdo <- read_csv("data/raw/bdo.csv")
+psei <- read_csv("data/raw/psei.csv")
+```
 
-# TODO: Replace with confirmed tickers after company selection
-TARGET_TICKER     <- "TBD.PS"
-COMPETITOR_TICKER <- "TBD.PS"
+# Cleaning the data
 
-# TODO: Pull data using tq_get() or getSymbols()
+```{r}
+bpi <- bpi %>%
+  mutate(
+    date = lubridate::mdy(Date)
+  ) %>%
+  mutate(
+    bpi_price = as.numeric(bpi_price),
+    bpi_volume = as.numeric(bpi_volume)
+  ) %>%
+  arrange(date)
+```
+
+
+```{r}
+bdo <- bdo %>%
+  mutate(
+    date = lubridate::mdy(Date),
+    Price = as.numeric(Price),
+    Volume = as.numeric(gsub("[^0-9]", "", Vol.)),
+    change_pct = as.numeric(gsub("%", "", `Change %`))
+  ) %>%
+  arrange(date)
+```
+
+
+```{r}
+psei <- psei %>%
+  mutate(
+    date = lubridate::mdy(Date),
+    Price = as.numeric(Price),
+    Volume = ifelse(grepl("K", Vol.),
+                    as.numeric(gsub("[^0-9.]", "", Vol.)) * 1000,
+                    as.numeric(gsub("[^0-9.]", "", Vol.))),
+    change_pct = as.numeric(gsub("%", "", `Change %`))
+  ) %>%
+  arrange(date)
+```
+
+
+
 # TODO: Align calendars and forward-fill PSE holidays
 # TODO: Save raw series to data/raw/ as CSV
 
