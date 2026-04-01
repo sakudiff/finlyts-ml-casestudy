@@ -4,29 +4,64 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+# Project configuration for feature engineering
+if (!require("here")) install.packages("here")
+here::i_am("R/02_feature_engineering.Rmd")
+
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE
+)
 ```
 
-# PURPOSE: Construct all mandatory features from rubric. NO LOOK-AHEAD BIAS.
-# ASSIGNED TO: Person 2 (Feature Engineering and EDA)
-# DEPENDS ON: 01_data_pull.R outputs in data/raw/
+# 02 Feature Engineering & EDA
+**Author:** Aaron (Feature Engineering and EDA)
+**Purpose:** Construct all mandatory features from the rubric while strictly avoiding look-ahead bias.
 
-# FEATURE CHECKLIST (rubric Section 4):
-# TREND: MA(5), MA(10), MA(20), EMA(12), EMA(26), MA ratio: MA5 / MA20
-# MOMENTUM: Lagged returns (lag_1, lag_2, lag_3), Momentum 5-day, Momentum 10-day, RSI(14), MACD and signal line
-# VOLATILITY: Rolling std dev (5-day, 10-day), Volatility ratio: vol5 / vol10
-# MARKET AND CROSS-ASSET: PSEi returns, Competitor stock returns, USD/PHP returns
-# TRANSFORMATIONS: Interaction term (momentum x volatility), Nonlinear (squared volatility)
-# REGIME: COVID dummy
-# TARGET VARIABLES: r_t1, r_t3, r_t5
+## 1. Feature Checklist
 
-# CRITICAL: All features must use only data available at time t or earlier.
-# Use dplyr::lag() for all lookback windows.
-# Use dplyr::lead() for targets only, assigned as separate columns.
+As per rubric Section 4, the following features must be engineered from the master dataset:
 
-```{r main}
+### Trend Indicators
+* Moving Averages: MA(5), MA(10), MA(20)
+* Exponential Moving Averages: EMA(12), EMA(26)
+* MA Ratio: MA(5) / MA(20)
+
+### Momentum
+* Lagged returns: lag_1, lag_2, lag_3
+* Momentum: 5-day and 10-day windows
+* Relative Strength Index: RSI(14)
+* MACD: Moving Average Convergence Divergence and its associated signal line
+
+### Volatility
+* Rolling standard deviation: 5-day and 10-day windows
+* Volatility ratio: vol(5) / vol(10)
+
+### Market and Cross-Asset
+* PSEi returns
+* Competitor stock returns (e.g., BDO for BPI)
+* Interaction terms (e.g., momentum multiplied by volatility)
+* Nonlinear transformations (e.g., squared volatility)
+
+### Target Variables
+* Multi-horizon returns: r_t+1, r_t+3, r_t+5
+
+## 2. Methodology and Implementation
+
+The implementation must strictly adhere to time-series discipline:
+1. All features must use only data available at time *t* or earlier to prevent look-ahead bias.
+2. Use `dplyr::lag()` for all lookback windows and technical indicators.
+3. Use `dplyr::lead()` only for target variables (labels), which are assigned to separate columns for supervised learning.
+
+```{r libraries}
 library(tidyquant)
 library(tidyverse)
+library(here)
+```
 
-message("02_feature_engineering.R: Not yet implemented.")
+```{r execute_feature_engineering}
+# This section will load data/processed/master_series.csv and apply transformations.
+# Currently awaiting implementation of technical indicators.
+message("02_feature_engineering.Rmd: Feature construction script is ready for implementation.")
 ```
