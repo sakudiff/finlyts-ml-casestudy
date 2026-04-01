@@ -4,36 +4,165 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+# Project configuration
+# Ensure the 'here' package is used for portable file paths across different operating systems
+if (!require("here")) install.packages("here")
+here::i_am("R/01_data_pull.Rmd")
+
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE
+)
 ```
 
-# PURPOSE: Pull all required data from Yahoo Finance and save to data/raw/
-# ASSIGNED TO: Person 1 (Data Owner)
+# 01 Data Pull & Cleaning
+**Author:** Jehan & Aaron
+**Purpose:** Load raw financial data from Investing.com, standardize formats, and merge into a master time series.
 
-# REQUIRED SERIES:
-# - Target stock:     [TICKER.PS]         (TBD - pending company selection)
-# - Competitor stock: [TICKER.PS]         (TBD - pending company selection)
-# - PSEi index:       ^PSEi
-# - USD/PHP rate:     PHP=X
-# - BTC:              BTC-USD
-# - WTI Crude Oil:    CL=F
-#
-# DATE RANGE: 2019-01-01 to present
+## 1. Libraries and Data Loading
 
-```{r main}
+We use `tidyverse` for general data manipulation and `here` for robust path management within the project structure.
+
+```{r libraries}
 library(tidyquant)
 library(tidyverse)
-
-START_DATE <- "2019-01-01"
-END_DATE   <- Sys.Date()
-
-# TODO: Replace with confirmed tickers after company selection
-TARGET_TICKER     <- "TBD.PS"
-COMPETITOR_TICKER <- "TBD.PS"
-
-# TODO: Pull data using tq_get() or getSymbols()
-# TODO: Align calendars and forward-fill PSE holidays
-# TODO: Save raw series to data/raw/ as CSV
-
-message("01_data_pull.R: Not yet implemented. Awaiting company selection.")
+library(lubridate)
+library(here)
 ```
+
+```{r load_data}
+# Loading raw data files from the data/raw directory
+# Investing.com CSV exports often contain commas in numeric fields and M/K suffixes for volume.
+# These will be handled in the cleaning function below.
+bpi_raw  <- read_csv(here("data", "raw", "bpi.csv"))
+bdo_raw  <- read_csv(here("data", "raw", "bdo.csv"))
+psei_raw <- read_csv(here("data", "raw", "psei.csv"))
+exchange_rate_raw <- read_csv(here("data", "raw", "exchange rate.csv"))
+```
+
+## 2. Cleaning Function
+
+To maintain consistency between BPI, BDO, and PSEi datasets, we use a single unified cleaning function. This directly addresses the conversion issues where numeric columns with commas or unit suffixes (M/K) were previously being parsed as NA.
+
+The function performs the following:
+1. Standardizes column names to lowercase and removes non-alphanumeric characters.
+2. Parses dates from MDY format.
+3. Cleans numeric columns (Price, Open, High, Low) by removing commas before conversion.
+4. Calculates Volume (Vol) by identifying 'M' (millions) or 'K' (thousands) suffixes.
+5. Adds a prefix to the cleaned columns to prevent name collisions during the merge.
+
+```{r cleaning_functions}
+#' Clean financial data exported from Investing.com
+#' @param df The raw data frame to be processed.
+#' @param prefix A string prefix to append to each column except the date.
+#' @return A processed data frame with standardized numeric columns.
+clean_investing_data <- function(df, prefix = "") {
+  # Standardize all column names to be snake_case and lowercase
+  names(df) <- tolower(gsub("[^a-zA-Z0-9]", "_", names(df)))
+  names(df) <- gsub("_+", "_", names(df))
+  names(df) <- gsub("(^_|_$)", "", names(df))
+  
+  df_clean <- df %>%
+    mutate(
+      # Standardize the date column using lubridate mdy parsing
+      date = mdy(date),
+      
+      # Convert price-related columns to numeric by stripping commas
+      across(c(price, open, high, low), ~ as.numeric(gsub(",", "", .x))),
+      
+      # Transform volume strings into actual numerical values
+      # We check for the suffix and multiply the parsed number accordingly.
+      vol = case_when(
+        grepl("M", vol) ~ as.numeric(gsub("[^0-9.]", "", vol)) * 1e6,
+        grepl("K", vol) ~ as.numeric(gsub("[^0-9.]", "", vol)) * 1e3,
+        TRUE ~ as.numeric(gsub("[^0-9.]", "", vol))
+      ),
+      
+      # Remove percentage signs from the change column and convert to numeric
+      change_pct = as.numeric(gsub("%", "", 'Change %'))
+    ) %>%
+    # Subset to the core required columns for analysis
+    select(date, price, open, high, low, vol, change_pct) %>%
+    arrange(date)
+  
+  # Append the prefix to columns if one is provided
+  if (prefix != "") {
+    df_clean <- df_clean %>%
+      rename_with(~ paste0(prefix, "_", .x), -date)
+  }
+  
+  return(df_clean)
+}
+```
+
+## 3. Execution and Merging
+
+The individual stock and index series are cleaned and then merged into a single master data frame. 
+
+We apply a forward-fill (Last Observation Carried Forward) strategy to handle dates where certain assets might not have traded (e.g., local holidays or weekends). This ensures a continuous series for time-series modeling.
+
+```{r execute_cleaning}
+# Processing each raw dataset individually
+bpi_clean  <- clean_investing_data(bpi_raw,  prefix = "bpi")
+bdo_clean  <- clean_investing_data(bdo_raw,  prefix = "bdo")
+psei_clean <- clean_investing_data(psei_raw, prefix = "psei")
+exchange_rate_clean <- clean_investing_data(exchange.rate_raw, prefix = "fx")
+
+# Join all cleaned series together by the date column
+master_data <- bpi_clean %>%
+  full_join(bdo_clean, by = "date") %>%
+  full_join(psei_clean, by = "date") %>%
+  full_join(exchange_rate_clean, by = "date") %>%
+  arrange(date)
+
+# Filling missing data points from holidays or weekends
+# This step is critical to maintain data integrity across different market schedules.
+master_data <- master_data %>%
+  fill(everything(), .direction = "down")
+
+# Verification of cleaning results
+# This prints the count of any remaining NA values to ensure the process was successful.
+print("NA count per column after final cleaning and filling:")
+colSums(is.na(master_data))
+```
+
+
+
+## 4. Save Processed Data
+
+Finally, the master dataset is saved as a CSV file in the processed data directory. This file will serve as the primary source for feature engineering and modeling.
+
+```{r save_data}
+# Creating the processed directory if it is not yet present in the project structure
+if (!dir.exists(here("data", "processed"))) dir.create(here("data", "processed"))
+
+# Exporting the final master time-series data
+write_csv(master_data, here("data", "processed", "master_series.csv"))
+message("01_data_pull.R: Processed master series successfully saved to data/processed/master_series.csv")
+```
+
+## Complete Daily Time Index
+
+```{r}
+full_dates <- tibble(
+  date = seq(min(bpi_clean$date), max(bpi_clean$date), by = "day")
+)
+```
+
+```{r}
+master_data <- full_dates %>%
+  left_join(bpi_clean, by = "date") %>%
+  left_join(bdo_clean, by = "date") %>%
+  left_join(psei_clean, by = "date") %>%
+  left_join(exchange_rate_clean, by = "date") %>%
+  arrange(date)
+```
+
+
+
+
+
+
+
+
