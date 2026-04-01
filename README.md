@@ -264,10 +264,11 @@ All data pulled programmatically via `tidyquant::tq_get()` from Yahoo Finance.
 | Competitor stock | BDO.PS |
 | PSEi Index | ^PSEi |
 | USD/PHP Exchange Rate | PHP=X |
+| U.S. 10-Year Treasury Yield | ^TNX |
 
 ### Project Configuration
 - **Industry:** Banking
-- **Macro Variables:** USD/PHP Exchange Rate, (Second Variable TBA)
+- **Macro Variables:** USD/PHP Exchange Rate, U.S. 10-Year Treasury Yield
 - **Regime Definition:** High Volatility (1 when 20-day vol > 2x historical average)
 
 ---

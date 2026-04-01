@@ -4,23 +4,395 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+# Install any missing packages before loading
+pkgs <- c("tidymodels", "kernlab", "nnet", "kableExtra", "tidyverse", "here")
+invisible(lapply(pkgs, function(p) {
+  if (!requireNamespace(p, quietly = TRUE)) install.packages(p, quiet = TRUE)
+}))
+here::i_am("R/05_models_svm_ann.Rmd")
+
+knitr::opts_chunk$set(
+  echo    = TRUE,
+  message = FALSE,
+  warning = FALSE
+)
 ```
 
-# PURPOSE: Estimate SVM and ANN models across all three horizons
-# ASSIGNED TO: Person 4 (Interpretation Lead)
-# DEPENDS ON: 02_feature_engineering.R output in data/processed/
+# 05 Support Vector Machine and Artificial Neural Network
 
-# REQUIREMENTS:
-# SVM: Features MUST be standardized before fitting. Scaling fit on training set only. Use kernlab engine.
-# ANN: Use nnet package. Architecture: one hidden layer, ReLU activation, dropout.
-# Both: Output RMSE, MAE, R-squared, Directional Accuracy per horizon.
+**Author:** Aaron
+**Purpose:** Estimate Support Vector Machine (SVM, RBF kernel) and Artificial Neural Network (ANN) models across all three prediction horizons (1-day, 3-day, 5-day). Both models use feature normalisation via `step_normalize()` inside the tidymodels workflow, ensuring the scaling transform is fitted on the training fold only and never contaminates the assessment fold or test set.
 
-```{r main}
-library(tidymodels)
-library(kernlab)
-library(nnet)
+**Depends on:** `data/processed/features.csv` (output of `02_feature_engineering.Rmd`)
+
+**Note on ANN architecture:** The `nnet` package (as specified in the rubric) implements a single hidden-layer perceptron with logistic activation and L2 weight decay (`penalty`). It does **not** support ReLU activation or dropout. This is a constraint of the `nnet` package. The regularisation via weight decay serves a function analogous to dropout by penalising large weights and reducing overfitting.
+
+---
+
+## 1. Libraries
+
+```{r libraries}
+library(tidymodels)    # parsnip, recipes, tune, rsample
+library(kernlab)       # SVM engine
+library(nnet)          # single-layer ANN engine
+library(kableExtra)    # LaTeX table export
 library(tidyverse)
+library(here)
+```
 
-message("05_models_svm_ann.R: Not yet implemented.")
+---
+
+## 2. Constants
+
+```{r constants}
+# Reproducibility
+RANDOM_SEED <- 42L
+
+# Data split — must mirror 02_feature_engineering.Rmd Section 10
+TRAIN_PROP  <- 0.80
+
+# Rolling-origin CV
+CV_INITIAL  <- 200L   # minimum training window
+CV_ASSESS   <- 60L    # assessment window (~one trading quarter)
+CV_SKIP     <- 100L   # gives ~13 slices on 80% of 1850 obs; kernlab SVM is slow, increase to speed up
+
+# SVM
+SVM_GRID_SIZE <- 15L  # Latin hypercube grid points for cost x rbf_sigma
+
+# ANN
+ANN_EPOCHS     <- 200L
+ANN_GRID_SIZE  <- 15L  # Latin hypercube grid points for hidden_units x penalty
+ANN_HIDDEN_MIN <- 3L
+ANN_HIDDEN_MAX <- 15L  # cap avoids overly large networks for n~1400 training obs
+
+# Column definitions
+TARGET_COLS  <- c("target_1d", "target_3d", "target_5d")
+HORIZON_LABS <- c("1d",        "3d",        "5d")
+
+PREDICTOR_COLS <- c(
+  # contemporaneous returns (known at time t)
+  "r_bpi", "r_bdo", "r_psei", "r_fx", "r_us10y",
+  # trend
+  "ma5", "ma10", "ma20", "ema12", "ema26", "ma_ratio",
+  # momentum
+  "lag1", "lag2", "lag3", "mom5", "mom10", "rsi14", "macd", "macd_signal",
+  # volatility
+  "vol5", "vol10", "vol20", "vol_ratio",
+  # cross-asset
+  "lag_psei",
+  # engineered transformations
+  "interact", "vol5_sq",
+  # regime
+  "hi_vol"
+)
+```
+
+---
+
+## 3. Load Data and Reproduce Split
+
+```{r load_split}
+features <- read_csv(
+  here("data", "processed", "features.csv"),
+  show_col_types = FALSE
+)
+
+n_total <- nrow(features)
+n_train <- floor(TRAIN_PROP * n_total)
+n_test  <- n_total - n_train
+
+train_df <- features[seq_len(n_train), ]
+test_df  <- features[(n_train + 1L):n_total, ]
+
+cat("Total clean observations:", n_total, "\n")
+cat("Training set            :", n_train,
+    "| up to", format(train_df$date[nrow(train_df)], "%Y-%m-%d"), "\n")
+cat("Test set                :", n_test,
+    "| from", format(test_df$date[1], "%Y-%m-%d"), "\n")
+```
+
+---
+
+## 4. Metrics Helper
+
+```{r metrics_fn}
+compute_metrics <- function(actual, predicted, naive_pred, model, horizon) {
+  ss_res   <- sum((actual - predicted)^2)
+  ss_total <- sum((actual - mean(actual))^2)
+
+  tibble(
+    Model    = model,
+    Horizon  = horizon,
+    RMSE     = sqrt(mean((actual - predicted)^2)),
+    MAE      = mean(abs(actual - predicted)),
+    R2       = 1 - ss_res / ss_total,   # can be negative out-of-sample
+    DA       = mean(sign(predicted) == sign(actual)),
+    Naive_DA = mean(sign(naive_pred) == sign(actual))
+  )
+}
+```
+
+---
+
+## 5. Support Vector Machine (RBF Kernel)
+
+SVM requires all numeric features to be on a comparable scale. The recipe includes `step_normalize(all_numeric_predictors())`, which centres and scales each predictor to zero mean and unit variance. Critically, `prep()` is called once per CV fold inside the tidymodels workflow — the normalisation parameters are derived only from the training portion of each fold and are never exposed to the assessment or test data.
+
+We tune two kernel hyperparameters:
+
+| Parameter | Controls |
+|---|---|
+| `cost` | Regularisation; lower values = wider margin, more slack |
+| `rbf_sigma` | RBF kernel bandwidth; higher values = tighter decision boundary |
+
+```{r svm_models}
+set.seed(RANDOM_SEED)
+
+svm_metrics_list <- vector("list", length(TARGET_COLS))
+
+for (h in seq_along(TARGET_COLS)) {
+
+  target_col    <- TARGET_COLS[h]
+  horizon_label <- HORIZON_LABS[h]
+
+  cat("\nSVM |", toupper(horizon_label), "horizon\n")
+
+  train_h <- train_df %>% select(all_of(c(target_col, PREDICTOR_COLS)))
+  test_h  <- test_df  %>% select(all_of(c(target_col, PREDICTOR_COLS)))
+
+  cv_h <- rolling_origin(
+    data       = train_h,
+    initial    = CV_INITIAL,
+    assess     = CV_ASSESS,
+    skip       = CV_SKIP,
+    cumulative = TRUE
+  )
+  cat("CV slices:", nrow(cv_h), "\n")
+
+  # step_normalize fits mean and SD on the training partition of each CV fold only.
+  # Fitting the scaler on the full training set before CV would leak fold-assessment info.
+  svm_recipe <- recipe(
+    as.formula(paste(target_col, "~ .")),
+    data = train_h
+  ) %>%
+    step_normalize(all_numeric_predictors())
+
+  svm_spec <- svm_rbf(
+    cost      = tune(),
+    rbf_sigma = tune()
+  ) %>%
+    set_engine("kernlab") %>%
+    set_mode("regression")
+
+  svm_wf <- workflow() %>%
+    add_recipe(svm_recipe) %>%
+    add_model(svm_spec)
+
+  svm_grid <- grid_latin_hypercube(
+    cost(),
+    rbf_sigma(),
+    size = SVM_GRID_SIZE
+  )
+
+  svm_tune <- tune_grid(
+    svm_wf,
+    resamples = cv_h,
+    grid      = svm_grid,
+    metrics   = metric_set(rmse, mae, rsq),
+    control   = control_grid(verbose = FALSE, save_pred = FALSE)
+  )
+
+  best_svm <- select_best(svm_tune, metric = "rmse")
+  cat("Best cost:", round(best_svm$cost, 5),
+      "| rbf_sigma:", round(best_svm$rbf_sigma, 6), "\n")
+
+  final_svm_wf  <- finalize_workflow(svm_wf, best_svm)
+  final_svm_fit <- fit(final_svm_wf, data = train_h)
+
+  svm_preds   <- predict(final_svm_fit, new_data = test_h)$.pred
+  naive_preds <- test_df$lag1
+
+  svm_metrics_list[[h]] <- compute_metrics(
+    actual     = test_h[[target_col]],
+    predicted  = svm_preds,
+    naive_pred = naive_preds,
+    model      = "SVM",
+    horizon    = horizon_label
+  )
+  cat("RMSE:", round(svm_metrics_list[[h]]$RMSE, 6),
+      "| DA:",  round(svm_metrics_list[[h]]$DA,   4),
+      "| Naive DA:", round(svm_metrics_list[[h]]$Naive_DA, 4), "\n")
+
+  saveRDS(
+    final_svm_fit,
+    here("output", "models", paste0("svm_", horizon_label, ".rds"))
+  )
+  cat("Model saved: output/models/svm_", horizon_label, ".rds\n", sep = "")
+}
+
+svm_metrics <- bind_rows(svm_metrics_list)
+```
+
+---
+
+## 6. Artificial Neural Network (nnet — Single Hidden Layer)
+
+The ANN uses `nnet` via tidymodels' `mlp()` interface. Architecture: one hidden layer with a tunable number of hidden units; linear activation on the output node (regression mode). Feature normalisation is applied via the same `step_normalize()` recipe as SVM, ensuring stable gradient descent and comparable input magnitudes.
+
+We tune two parameters:
+
+| Parameter | Controls |
+|---|---|
+| `hidden_units` | Width of the single hidden layer |
+| `penalty` | L2 weight decay; prevents overfitting |
+
+**Architectural note:** `nnet` uses logistic (sigmoid) activation on hidden units and does not natively support ReLU activation or dropout. The `penalty` (weight decay) parameter provides regularisation analogous to dropout by penalising large weight magnitudes.
+
+```{r ann_models}
+set.seed(RANDOM_SEED)
+
+ann_metrics_list <- vector("list", length(TARGET_COLS))
+
+for (h in seq_along(TARGET_COLS)) {
+
+  target_col    <- TARGET_COLS[h]
+  horizon_label <- HORIZON_LABS[h]
+
+  cat("\nANN |", toupper(horizon_label), "horizon\n")
+
+  train_h <- train_df %>% select(all_of(c(target_col, PREDICTOR_COLS)))
+  test_h  <- test_df  %>% select(all_of(c(target_col, PREDICTOR_COLS)))
+
+  cv_h <- rolling_origin(
+    data       = train_h,
+    initial    = CV_INITIAL,
+    assess     = CV_ASSESS,
+    skip       = CV_SKIP,
+    cumulative = TRUE
+  )
+  cat("CV slices:", nrow(cv_h), "\n")
+
+  # Normalisation ensures stable gradient descent across features with different scales
+  ann_recipe <- recipe(
+    as.formula(paste(target_col, "~ .")),
+    data = train_h
+  ) %>%
+    step_normalize(all_numeric_predictors())
+
+  ann_spec <- mlp(
+    hidden_units = tune(),
+    penalty      = tune(),
+    epochs       = ANN_EPOCHS
+  ) %>%
+    set_engine("nnet") %>%
+    set_mode("regression")
+
+  ann_wf <- workflow() %>%
+    add_recipe(ann_recipe) %>%
+    add_model(ann_spec)
+
+  ann_grid <- grid_latin_hypercube(
+    hidden_units(range = c(ANN_HIDDEN_MIN, ANN_HIDDEN_MAX)),
+    penalty(range = c(-5, 0)),   # log10 scale: 1e-5 to 1.0
+    size = ANN_GRID_SIZE
+  )
+
+  ann_tune <- tune_grid(
+    ann_wf,
+    resamples = cv_h,
+    grid      = ann_grid,
+    metrics   = metric_set(rmse, mae, rsq),
+    control   = control_grid(verbose = FALSE, save_pred = FALSE)
+  )
+
+  best_ann <- select_best(ann_tune, metric = "rmse")
+  cat("Best hidden_units:", best_ann$hidden_units,
+      "| penalty:", round(best_ann$penalty, 6), "\n")
+
+  final_ann_wf  <- finalize_workflow(ann_wf, best_ann)
+  final_ann_fit <- fit(final_ann_wf, data = train_h)
+
+  ann_preds   <- predict(final_ann_fit, new_data = test_h)$.pred
+  naive_preds <- test_df$lag1
+
+  ann_metrics_list[[h]] <- compute_metrics(
+    actual     = test_h[[target_col]],
+    predicted  = ann_preds,
+    naive_pred = naive_preds,
+    model      = "ANN",
+    horizon    = horizon_label
+  )
+  cat("RMSE:", round(ann_metrics_list[[h]]$RMSE, 6),
+      "| DA:",  round(ann_metrics_list[[h]]$DA,   4),
+      "| Naive DA:", round(ann_metrics_list[[h]]$Naive_DA, 4), "\n")
+
+  saveRDS(
+    final_ann_fit,
+    here("output", "models", paste0("ann_", horizon_label, ".rds"))
+  )
+  cat("Model saved: output/models/ann_", horizon_label, ".rds\n", sep = "")
+}
+
+ann_metrics <- bind_rows(ann_metrics_list)
+```
+
+---
+
+## 7. Results Summary
+
+```{r results_table}
+all_metrics <- bind_rows(svm_metrics, ann_metrics) %>%
+  mutate(across(where(is.double), ~ round(., 5)))
+
+kable(
+  all_metrics,
+  caption   = "SVM and ANN: Out-of-Sample Performance by Horizon",
+  col.names = c("Model", "Horizon", "RMSE", "MAE", "R2", "DA", "Naive DA"),
+  digits    = 5
+) %>%
+  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = FALSE)
+```
+
+---
+
+## 8. Save Outputs
+
+```{r save_outputs}
+write_csv(all_metrics, here("output", "predictions", "svm_ann_metrics.csv"))
+message("Metrics saved to output/predictions/svm_ann_metrics.csv")
+
+if (!dir.exists(here("paper", "tables"))) dir.create(here("paper", "tables"))
+
+latex_tbl <- kable(
+  all_metrics,
+  format    = "latex",
+  booktabs  = TRUE,
+  escape    = TRUE,
+  linesep   = "",
+  caption   = "SVM and ANN: Out-of-Sample Performance by Horizon",
+  label     = "svm_ann_metrics",
+  col.names = c("Model", "Horizon", "RMSE", "MAE", "R2", "DA", "Naive DA"),
+  digits    = 5
+) %>%
+  kable_styling(latex_options = c("hold_position", "scale_down")) %>%
+  footnote(
+    general           = paste0(
+      "DA = Directional Accuracy (fraction of test-set observations where the ",
+      "predicted sign matches the realised sign). ",
+      "Naive DA uses the previous day's return (lag1) as the prediction. ",
+      "R2 is out-of-sample and may be negative if the model performs worse than the mean. ",
+      "SVM features are normalised inside the workflow (zero mean, unit variance). ",
+      "ANN uses logistic hidden-unit activation and L2 weight decay via the nnet engine."
+    ),
+    general_title     = "Note.",
+    footnote_as_chunk = TRUE,
+    escape            = TRUE
+  )
+
+writeLines(
+  as.character(latex_tbl),
+  here("paper", "tables", "svm_ann_metrics.tex")
+)
+message("LaTeX table saved to paper/tables/svm_ann_metrics.tex")
+message("05_models_svm_ann.Rmd: Complete.")
 ```

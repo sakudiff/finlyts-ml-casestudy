@@ -39,6 +39,10 @@ bpi_raw  <- read_csv(here("data", "raw", "bpi.csv"))
 bdo_raw  <- read_csv(here("data", "raw", "bdo.csv"))
 psei_raw <- read_csv(here("data", "raw", "psei.csv"))
 exchange_rate_raw <- read_csv(here("data", "raw", "exchange rate.csv"))
+
+# Pulling the U.S. 10-Year Treasury Yield (^TNX) from Yahoo Finance via tidyquant
+# This serves as our second macro variable, the "global discount rate".
+us10y_raw <- tq_get("^TNX", get = "stock.prices", from = "2019-01-01")
 ```
 
 ## 2. Cleaning Function
@@ -80,7 +84,7 @@ clean_investing_data <- function(df, prefix = "") {
       ),
       
       # Remove percentage signs from the change column and convert to numeric
-      change_pct = as.numeric(gsub("%", "", 'Change %'))
+      change_pct = as.numeric(gsub("%", "", .data[["change"]]))
     ) %>%
     # Subset to the core required columns for analysis
     select(date, price, open, high, low, vol, change_pct) %>%
@@ -94,6 +98,20 @@ clean_investing_data <- function(df, prefix = "") {
   
   return(df_clean)
 }
+
+#' Clean Yahoo Finance yield data
+#' @param df The raw data frame from tq_get.
+#' @param prefix A string prefix to append to the columns.
+#' @return A processed data frame with standardized yield columns.
+clean_yahoo_yield_data <- function(df, prefix = "us10y") {
+  df %>%
+    rename(price = close) %>% # ^TNX uses 'close' as the primary price point
+    select(date, price, open, high, low, volume) %>%
+    rename(vol = volume) %>%
+    mutate(change_pct = (price / lag(price) - 1) * 100) %>%
+    rename_with(~ paste0(prefix, "_", .x), -date) %>%
+    arrange(date)
+}
 ```
 
 ## 3. Execution and Merging
@@ -104,16 +122,18 @@ We apply a forward-fill (Last Observation Carried Forward) strategy to handle da
 
 ```{r execute_cleaning}
 # Processing each raw dataset individually
-bpi_clean  <- clean_investing_data(bpi_raw,  prefix = "bpi")
-bdo_clean  <- clean_investing_data(bdo_raw,  prefix = "bdo")
-psei_clean <- clean_investing_data(psei_raw, prefix = "psei")
-exchange_rate_clean <- clean_investing_data(exchange.rate_raw, prefix = "fx")
+bpi_clean   <- clean_investing_data(bpi_raw,  prefix = "bpi")
+bdo_clean   <- clean_investing_data(bdo_raw,  prefix = "bdo")
+psei_clean  <- clean_investing_data(psei_raw, prefix = "psei")
+fx_clean    <- clean_investing_data(exchange_rate_raw, prefix = "fx")
+us10y_clean <- clean_yahoo_yield_data(us10y_raw, prefix = "us10y")
 
 # Join all cleaned series together by the date column
 master_data <- bpi_clean %>%
-  full_join(bdo_clean, by = "date") %>%
-  full_join(psei_clean, by = "date") %>%
-  full_join(exchange_rate_clean, by = "date") %>%
+  full_join(bdo_clean,   by = "date") %>%
+  full_join(psei_clean,  by = "date") %>%
+  full_join(fx_clean,    by = "date") %>%
+  full_join(us10y_clean, by = "date") %>%
   arrange(date)
 
 # Filling missing data points from holidays or weekends
@@ -127,37 +147,32 @@ print("NA count per column after final cleaning and filling:")
 colSums(is.na(master_data))
 ```
 
+## 4. Complete Daily Time Index and Save
 
+We expand the index to include every calendar day, then forward-fill gaps. 
+This ensures a continuous series for time-series modeling and financial diagnostics.
 
-## 4. Save Processed Data
+```{r finalize_and_save}
+# Create the complete calendar sequence from start to finish
+full_dates <- tibble(
+  date = seq(min(master_data$date), max(master_data$date), by = "day")
+)
 
-Finally, the master dataset is saved as a CSV file in the processed data directory. This file will serve as the primary source for feature engineering and modeling.
+# Join the actual trading data back to the full calendar
+# We fill down to carry the last available price through weekends/holidays.
+master_data <- full_dates %>%
+  left_join(master_data, by = "date") %>%
+  arrange(date) %>%
+  fill(everything(), .direction = "down")
 
-```{r save_data}
-# Creating the processed directory if it is not yet present in the project structure
+# Creating the processed directory if it is not yet present
 if (!dir.exists(here("data", "processed"))) dir.create(here("data", "processed"))
 
 # Exporting the final master time-series data
 write_csv(master_data, here("data", "processed", "master_series.csv"))
-message("01_data_pull.R: Processed master series successfully saved to data/processed/master_series.csv")
+message("01_data_pull.R: Master series (full calendar) successfully saved to data/processed/master_series.csv")
 ```
 
-## Complete Daily Time Index
-
-```{r}
-full_dates <- tibble(
-  date = seq(min(bpi_clean$date), max(bpi_clean$date), by = "day")
-)
-```
-
-```{r}
-master_data <- full_dates %>%
-  left_join(bpi_clean, by = "date") %>%
-  left_join(bdo_clean, by = "date") %>%
-  left_join(psei_clean, by = "date") %>%
-  left_join(exchange_rate_clean, by = "date") %>%
-  arrange(date)
-```
 
 
 

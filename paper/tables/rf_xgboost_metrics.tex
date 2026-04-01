@@ -1,0 +1,19 @@
+\begin{table}[!h]
+\centering
+\caption{\label{tab:rf_xgboost_metrics}Random Forest and XGBoost: Out-of-Sample Performance by Horizon}
+\centering
+\resizebox{\ifdim\width>\linewidth\linewidth\else\width\fi}{!}{
+\begin{tabular}[t]{llrrrrr}
+\toprule
+Model & Horizon & RMSE & MAE & R2 & DA & Naive DA\\
+\midrule
+Random Forest & 1d & 0.01962 & 0.01444 & -0.01379 & 0.43666 & 0.42857\\
+Random Forest & 3d & 0.03026 & 0.02384 & -0.07615 & 0.47978 & 0.41509\\
+Random Forest & 5d & 0.03784 & 0.02957 & -0.12996 & 0.45822 & 0.42857\\
+XGBoost & 1d & 0.01945 & 0.01378 & 0.00397 & 0.42318 & 0.42857\\
+XGBoost & 3d & 0.02940 & 0.02269 & -0.01557 & 0.47709 & 0.41509\\
+XGBoost & 5d & 0.03616 & 0.02807 & -0.03154 & 0.44744 & 0.42857\\
+\bottomrule
+\multicolumn{7}{l}{\rule{0pt}{1em}\textit{Note.} DA = Directional Accuracy (fraction of test-set observations where the predicted sign matches the realised sign). Naive DA uses the previous day's return (lag1) as the prediction. R2 is out-of-sample and may be negative if the model performs worse than the mean.}\\
+\end{tabular}}
+\end{table}

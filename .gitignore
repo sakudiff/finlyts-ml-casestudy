@@ -27,7 +27,10 @@ output/models/*.rds
 *.nav
 *.snm
 *.vrb
-*.pdf
+paper/main.bbl-SAVE-ERROR
+paper/main.bcf
+paper/main.bcf-SAVE-ERROR
+paper/main.run.xml
 
 # Output models and predictions
 output/models/*.rds
