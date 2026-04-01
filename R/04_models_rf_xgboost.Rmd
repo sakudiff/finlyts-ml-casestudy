@@ -4,26 +4,460 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+# Install any missing packages before loading
+pkgs <- c("tidymodels", "ranger", "xgboost", "vip", "kableExtra", "tidyverse", "here")
+invisible(lapply(pkgs, function(p) {
+  if (!requireNamespace(p, quietly = TRUE)) install.packages(p, quiet = TRUE)
+}))
+here::i_am("R/04_models_rf_xgboost.Rmd")
+
+knitr::opts_chunk$set(
+  echo    = TRUE,
+  message = FALSE,
+  warning = FALSE
+)
 ```
 
-# PURPOSE: Estimate Random Forest and XGBoost models across all three horizons
-# ASSIGNED TO: Person 3 (Modeling and Results)
-# DEPENDS ON: 02_feature_engineering.R output in data/processed/
+# 04 Random Forest and XGBoost
 
-# REQUIREMENTS:
-# - Use tidymodels / parsnip interface
-# - Time-series cross-validation via rsample::rolling_origin() for tuning
-# - Hyperparameter tuning required on at least one model (recommend XGBoost)
-# - Grid search via tune::tune_grid() with TimeSeriesSplit-compatible CV
-# - Save feature importance plots to paper/figures/
-# - Save metrics to output/predictions/
+**Author:** Aaron
+**Purpose:** Estimate Random Forest (RF) and XGBoost models across all three prediction horizons (1-day, 3-day, 5-day). Hyperparameter tuning via Latin hypercube grid search over rolling-origin cross-validation folds. Outputs feature importance plots, model objects, and a performance metrics table.
 
-```{r main}
-library(tidymodels)
-library(ranger)
-library(xgboost)
+**Depends on:** `data/processed/features.csv` (output of `02_feature_engineering.Rmd`)
+
+---
+
+## 1. Libraries
+
+```{r libraries}
+library(tidymodels)    # parsnip, recipes, tune, rsample
+library(ranger)        # RF engine
+library(xgboost)       # gradient boosting engine
+library(vip)           # variable importance plots
+library(kableExtra)    # LaTeX table export
 library(tidyverse)
+library(here)
+```
 
-message("04_models_rf_xgboost.R: Not yet implemented.")
+---
+
+## 2. Constants
+
+All configuration values are defined once here and referenced throughout. No magic numbers inline.
+
+```{r constants}
+# Reproducibility
+RANDOM_SEED <- 42L
+
+# Data split — must mirror 02_feature_engineering.Rmd Section 10
+TRAIN_PROP  <- 0.80
+
+# Rolling-origin CV
+CV_INITIAL  <- 200L   # minimum training window; covers MACD init ~35 obs + buffer
+CV_ASSESS   <- 60L    # assessment window (~one trading quarter)
+CV_SKIP     <- 100L   # gives ~13 slices on 80% of 1850 obs; increase to speed up tuning
+
+# Random Forest
+RF_TREES     <- 500L
+RF_GRID_SIZE <- 15L   # Latin hypercube grid points
+RF_MTRY_MIN  <- 3L
+RF_MTRY_MAX  <- 13L   # floor(27 predictors / 2), rule of thumb for regression RF
+RF_MINN_MIN  <- 5L
+RF_MINN_MAX  <- 30L
+
+# XGBoost
+XGB_TREES     <- 500L
+XGB_GRID_SIZE <- 20L  # Latin hypercube grid points for 5 parameters
+
+# Column definitions
+TARGET_COLS  <- c("target_1d", "target_3d", "target_5d")
+HORIZON_LABS <- c("1d",        "3d",        "5d")
+
+PREDICTOR_COLS <- c(
+  # contemporaneous returns (known at time t)
+  "r_bpi", "r_bdo", "r_psei", "r_fx", "r_us10y",
+  # trend
+  "ma5", "ma10", "ma20", "ema12", "ema26", "ma_ratio",
+  # momentum
+  "lag1", "lag2", "lag3", "mom5", "mom10", "rsi14", "macd", "macd_signal",
+  # volatility
+  "vol5", "vol10", "vol20", "vol_ratio",
+  # cross-asset
+  "lag_psei",
+  # engineered transformations
+  "interact", "vol5_sq",
+  # regime
+  "hi_vol"
+)
+```
+
+---
+
+## 3. Load Data and Reproduce Split
+
+The 80/20 chronological split replicates the exact partition defined in `02_feature_engineering.Rmd` (Section 10). All five model scripts must use the identical cutoff row to ensure comparable out-of-sample periods.
+
+```{r load_split}
+features <- read_csv(
+  here("data", "processed", "features.csv"),
+  show_col_types = FALSE
+)
+
+n_total <- nrow(features)
+n_train <- floor(TRAIN_PROP * n_total)
+n_test  <- n_total - n_train
+
+train_df <- features[seq_len(n_train), ]
+test_df  <- features[(n_train + 1L):n_total, ]
+
+cat("Total clean observations:", n_total, "\n")
+cat("Training set            :", n_train,
+    "| up to", format(train_df$date[nrow(train_df)], "%Y-%m-%d"), "\n")
+cat("Test set                :", n_test,
+    "| from", format(test_df$date[1], "%Y-%m-%d"), "\n")
+```
+
+---
+
+## 4. Metrics Helper
+
+Computes RMSE, MAE, R² (out-of-sample), Directional Accuracy, and Naïve Directional Accuracy for one model-horizon evaluation. The naïve benchmark is the previous day's BPI log return (`lag1`) as a stand-in prediction.
+
+```{r metrics_fn}
+compute_metrics <- function(actual, predicted, naive_pred, model, horizon) {
+  ss_res   <- sum((actual - predicted)^2)
+  ss_total <- sum((actual - mean(actual))^2)
+
+  tibble(
+    Model    = model,
+    Horizon  = horizon,
+    RMSE     = sqrt(mean((actual - predicted)^2)),
+    MAE      = mean(abs(actual - predicted)),
+    R2       = 1 - ss_res / ss_total,   # can be negative out-of-sample
+    DA       = mean(sign(predicted) == sign(actual)),
+    Naive_DA = mean(sign(naive_pred) == sign(actual))
+  )
+}
+```
+
+---
+
+## 5. Random Forest
+
+Tree-based ensembles are scale-invariant; no feature normalisation is applied. We tune two hyperparameters:
+
+- **`mtry`** (features sampled per split): controls decorrelation between trees.
+- **`min_n`** (minimum leaf size): regularises tree depth.
+
+All 500 trees use impurity-based importance scoring (`importance = "impurity"`) for feature importance extraction via `vip`.
+
+```{r rf_models}
+set.seed(RANDOM_SEED)
+
+rf_metrics_list <- vector("list", length(TARGET_COLS))
+
+for (h in seq_along(TARGET_COLS)) {
+
+  target_col    <- TARGET_COLS[h]
+  horizon_label <- HORIZON_LABS[h]
+
+  cat("\nRF |", toupper(horizon_label), "horizon\n")
+
+  # Select only the outcome + predictors to keep other target columns out of the recipe
+  train_h <- train_df %>% select(all_of(c(target_col, PREDICTOR_COLS)))
+  test_h  <- test_df  %>% select(all_of(c(target_col, PREDICTOR_COLS)))
+
+  # Rolling-origin CV on training set only — no test data ever enters the fold
+  cv_h <- rolling_origin(
+    data       = train_h,
+    initial    = CV_INITIAL,
+    assess     = CV_ASSESS,
+    skip       = CV_SKIP,
+    cumulative = TRUE
+  )
+  cat("CV slices:", nrow(cv_h), "\n")
+
+  # No normalisation needed — trees are scale-invariant
+  rf_recipe <- recipe(
+    as.formula(paste(target_col, "~ .")),
+    data = train_h
+  )
+
+  rf_spec <- rand_forest(
+    mtry  = tune(),
+    min_n = tune(),
+    trees = RF_TREES
+  ) %>%
+    set_engine(
+      "ranger",
+      importance = "impurity",   # required for vip() to extract importance scores
+      seed       = RANDOM_SEED
+    ) %>%
+    set_mode("regression")
+
+  rf_wf <- workflow() %>%
+    add_recipe(rf_recipe) %>%
+    add_model(rf_spec)
+
+  rf_grid <- grid_latin_hypercube(
+    mtry(range  = c(RF_MTRY_MIN, RF_MTRY_MAX)),
+    min_n(range = c(RF_MINN_MIN, RF_MINN_MAX)),
+    size = RF_GRID_SIZE
+  )
+
+  rf_tune <- tune_grid(
+    rf_wf,
+    resamples = cv_h,
+    grid      = rf_grid,
+    metrics   = metric_set(rmse, mae, rsq),
+    control   = control_grid(verbose = FALSE, save_pred = FALSE)
+  )
+
+  best_rf <- select_best(rf_tune, metric = "rmse")
+  cat("Best mtry:", best_rf$mtry, "| Best min_n:", best_rf$min_n, "\n")
+
+  final_rf_wf  <- finalize_workflow(rf_wf, best_rf)
+  final_rf_fit <- fit(final_rf_wf, data = train_h)
+
+  rf_preds    <- predict(final_rf_fit, new_data = test_h)$.pred
+  naive_preds <- test_df$lag1   # previous day's return as naive benchmark
+
+  rf_metrics_list[[h]] <- compute_metrics(
+    actual     = test_h[[target_col]],
+    predicted  = rf_preds,
+    naive_pred = naive_preds,
+    model      = "Random Forest",
+    horizon    = horizon_label
+  )
+  cat("RMSE:", round(rf_metrics_list[[h]]$RMSE, 6),
+      "| DA:",  round(rf_metrics_list[[h]]$DA,   4),
+      "| Naive DA:", round(rf_metrics_list[[h]]$Naive_DA, 4), "\n")
+
+  vip_plot <- final_rf_fit %>%
+    extract_fit_parsnip() %>%
+    vip(num_features = 15) +
+    labs(
+      title    = "Random Forest — Feature Importance (Top 15)",
+      subtitle = paste0(
+        toupper(horizon_label), " Horizon | ",
+        "Test RMSE: ", round(rf_metrics_list[[h]]$RMSE, 6)
+      ),
+      x = "Impurity-Based Importance",
+      y = NULL
+    ) +
+    theme_minimal(base_size = 12) +
+    theme(
+      plot.title         = element_text(face = "bold"),
+      plot.subtitle      = element_text(color = "#595959"),
+      panel.grid.major.y = element_blank()
+    )
+
+  ggsave(
+    here("paper", "figures", paste0("rf_importance_", horizon_label, ".png")),
+    vip_plot,
+    width = 8, height = 6, dpi = 300
+  )
+  cat("Importance plot saved: paper/figures/rf_importance_", horizon_label, ".png\n", sep = "")
+
+  saveRDS(
+    final_rf_fit,
+    here("output", "models", paste0("rf_", horizon_label, ".rds"))
+  )
+  cat("Model saved: output/models/rf_", horizon_label, ".rds\n", sep = "")
+}
+
+rf_metrics <- bind_rows(rf_metrics_list)
+```
+
+---
+
+## 6. XGBoost
+
+XGBoost is the primary tuned model. We tune five hyperparameters via a 20-point Latin hypercube grid:
+
+| Parameter | Controls |
+|---|---|
+| `learn_rate` | Step size shrinkage; lower values reduce overfitting |
+| `tree_depth` | Maximum tree depth; controls model complexity |
+| `min_n` | Minimum observations to split a node |
+| `loss_reduction` | Minimum loss reduction required to make a split |
+| `sample_size` | Row subsampling ratio per tree (stochastic boosting) |
+
+```{r xgb_models}
+set.seed(RANDOM_SEED)
+
+xgb_metrics_list <- vector("list", length(TARGET_COLS))
+
+for (h in seq_along(TARGET_COLS)) {
+
+  target_col    <- TARGET_COLS[h]
+  horizon_label <- HORIZON_LABS[h]
+
+  cat("\nXGBoost |", toupper(horizon_label), "horizon\n")
+
+  train_h <- train_df %>% select(all_of(c(target_col, PREDICTOR_COLS)))
+  test_h  <- test_df  %>% select(all_of(c(target_col, PREDICTOR_COLS)))
+
+  cv_h <- rolling_origin(
+    data       = train_h,
+    initial    = CV_INITIAL,
+    assess     = CV_ASSESS,
+    skip       = CV_SKIP,
+    cumulative = TRUE
+  )
+  cat("CV slices:", nrow(cv_h), "\n")
+
+  xgb_recipe <- recipe(
+    as.formula(paste(target_col, "~ .")),
+    data = train_h
+  )
+
+  xgb_spec <- boost_tree(
+    trees          = XGB_TREES,
+    learn_rate     = tune(),
+    tree_depth     = tune(),
+    min_n          = tune(),
+    loss_reduction = tune(),
+    sample_size    = tune()
+  ) %>%
+    set_engine("xgboost") %>%
+    set_mode("regression")
+
+  xgb_wf <- workflow() %>%
+    add_recipe(xgb_recipe) %>%
+    add_model(xgb_spec)
+
+  # sample_size in boost_tree maps to sample_prop() in dials
+  xgb_grid <- grid_latin_hypercube(
+    learn_rate(),
+    tree_depth(),
+    min_n(),
+    loss_reduction(),
+    sample_size = sample_prop(),
+    size = XGB_GRID_SIZE
+  )
+
+  xgb_tune <- tune_grid(
+    xgb_wf,
+    resamples = cv_h,
+    grid      = xgb_grid,
+    metrics   = metric_set(rmse, mae, rsq),
+    control   = control_grid(verbose = FALSE, save_pred = FALSE)
+  )
+
+  best_xgb <- select_best(xgb_tune, metric = "rmse")
+  cat("Best learn_rate:", round(best_xgb$learn_rate, 5),
+      "| tree_depth:", best_xgb$tree_depth,
+      "| min_n:", best_xgb$min_n, "\n")
+
+  final_xgb_wf  <- finalize_workflow(xgb_wf, best_xgb)
+  final_xgb_fit <- fit(final_xgb_wf, data = train_h)
+
+  xgb_preds   <- predict(final_xgb_fit, new_data = test_h)$.pred
+  naive_preds <- test_df$lag1
+
+  xgb_metrics_list[[h]] <- compute_metrics(
+    actual     = test_h[[target_col]],
+    predicted  = xgb_preds,
+    naive_pred = naive_preds,
+    model      = "XGBoost",
+    horizon    = horizon_label
+  )
+  cat("RMSE:", round(xgb_metrics_list[[h]]$RMSE, 6),
+      "| DA:",  round(xgb_metrics_list[[h]]$DA,   4),
+      "| Naive DA:", round(xgb_metrics_list[[h]]$Naive_DA, 4), "\n")
+
+  vip_plot <- final_xgb_fit %>%
+    extract_fit_parsnip() %>%
+    vip(num_features = 15) +
+    labs(
+      title    = "XGBoost — Feature Importance (Top 15)",
+      subtitle = paste0(
+        toupper(horizon_label), " Horizon | ",
+        "Test RMSE: ", round(xgb_metrics_list[[h]]$RMSE, 6)
+      ),
+      x = "Importance (Gain)",
+      y = NULL
+    ) +
+    theme_minimal(base_size = 12) +
+    theme(
+      plot.title         = element_text(face = "bold"),
+      plot.subtitle      = element_text(color = "#595959"),
+      panel.grid.major.y = element_blank()
+    )
+
+  ggsave(
+    here("paper", "figures", paste0("xgboost_importance_", horizon_label, ".png")),
+    vip_plot,
+    width = 8, height = 6, dpi = 300
+  )
+  cat("Importance plot saved: paper/figures/xgboost_importance_", horizon_label, ".png\n", sep = "")
+
+  saveRDS(
+    final_xgb_fit,
+    here("output", "models", paste0("xgboost_", horizon_label, ".rds"))
+  )
+  cat("Model saved: output/models/xgboost_", horizon_label, ".rds\n", sep = "")
+}
+
+xgb_metrics <- bind_rows(xgb_metrics_list)
+```
+
+---
+
+## 7. Results Summary
+
+```{r results_table}
+all_metrics <- bind_rows(rf_metrics, xgb_metrics) %>%
+  mutate(across(where(is.double), ~ round(., 5)))
+
+kable(
+  all_metrics,
+  caption   = "Random Forest and XGBoost: Out-of-Sample Performance by Horizon",
+  col.names = c("Model", "Horizon", "RMSE", "MAE", "R2", "DA", "Naive DA"),
+  digits    = 5
+) %>%
+  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = FALSE)
+```
+
+---
+
+## 8. Save Outputs
+
+```{r save_outputs}
+write_csv(all_metrics, here("output", "predictions", "rf_xgboost_metrics.csv"))
+message("Metrics saved to output/predictions/rf_xgboost_metrics.csv")
+
+if (!dir.exists(here("paper", "tables"))) dir.create(here("paper", "tables"))
+
+latex_tbl <- kable(
+  all_metrics,
+  format    = "latex",
+  booktabs  = TRUE,
+  escape    = TRUE,
+  linesep   = "",
+  caption   = "Random Forest and XGBoost: Out-of-Sample Performance by Horizon",
+  label     = "rf_xgboost_metrics",
+  col.names = c("Model", "Horizon", "RMSE", "MAE", "R2", "DA", "Naive DA"),
+  digits    = 5
+) %>%
+  kable_styling(latex_options = c("hold_position", "scale_down")) %>%
+  footnote(
+    general           = paste0(
+      "DA = Directional Accuracy (fraction of test-set observations where the ",
+      "predicted sign matches the realised sign). ",
+      "Naive DA uses the previous day's return (lag1) as the prediction. ",
+      "R2 is out-of-sample and may be negative if the model performs worse than the mean."
+    ),
+    general_title     = "Note.",
+    footnote_as_chunk = TRUE,
+    escape            = TRUE
+  )
+
+writeLines(
+  as.character(latex_tbl),
+  here("paper", "tables", "rf_xgboost_metrics.tex")
+)
+message("LaTeX table saved to paper/tables/rf_xgboost_metrics.tex")
+message("04_models_rf_xgboost.Rmd: Complete.")
 ```
