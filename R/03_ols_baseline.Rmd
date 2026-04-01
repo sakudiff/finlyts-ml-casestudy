@@ -18,6 +18,10 @@ knitr::opts_chunk$set(echo = TRUE)
 # - Output: RMSE, MAE, R-squared, Directional Accuracy per horizon
 # - Save coefficient table as LaTeX to paper/tables/ols_coefficients.tex
 
+# ADVICE FOR CARLOS:
+# 1. Split Consistency: Use the same 80/20 chronological split defined in Section 10 of 02_feature_engineering.Rmd (cutoff ~April 2024) to ensure model comparability.
+# 2. Multicollinearity: The feature set includes both 'ma_ratio' and raw MAs (ma5, ma10, ma20). OLS will suffer from high VIF. Conduct a VIF check and consider dropping the raw MAs in favor of the ratio for the linear baseline.
+
 ```{r main}
 library(tidymodels)
 library(tidyverse)

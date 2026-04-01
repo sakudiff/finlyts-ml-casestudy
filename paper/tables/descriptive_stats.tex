@@ -1,0 +1,24 @@
+\begin{table}[!h]
+\centering
+\caption{\label{tab:descriptive_stats}Descriptive Statistics: Target Variables and Key Features (2019--2026)}
+\centering
+\resizebox{\ifdim\width>\linewidth\linewidth\else\width\fi}{!}{
+\begin{tabular}[t]{lrrrrrr}
+\toprule
+Variable & Mean & SD & Min & Max & Skewness & Ex. Kurtosis\\
+\midrule
+$r_{t+1}$ (1-day return) & 0.0001 & 0.0194 & -0.1156 & 0.0940 & -0.2406 & 3.8844\\
+$r_{t:t+3}$ (3-day cumulative) & 0.0001 & 0.0302 & -0.1923 & 0.2069 & 0.2001 & 4.2785\\
+$r_{t:t+5}$ (5-day cumulative) & 0.0003 & 0.0372 & -0.2122 & 0.1857 & 0.0768 & 3.3420\\
+$r_{t-1}$ (Lag 1 return) & 0.0001 & 0.0194 & -0.1156 & 0.0940 & -0.2405 & 3.8888\\
+MA Ratio (5/20) & 1.0006 & 0.0306 & 0.8052 & 1.1471 & -0.4007 & 4.9262\\
+RSI (14-day) & 50.5271 & 10.3353 & 20.7849 & 85.4483 & 0.1171 & 0.1846\\
+$\sigma_5$ (5-day rolling vol) & 0.0174 & 0.0099 & 0.0018 & 0.0817 & 1.8427 & 5.6089\\
+$r^{\text{PSEi}}_t$ (market return) & -0.0001 & 0.0124 & -0.1432 & 0.0717 & -1.3450 & 15.5454\\
+$r^{FX}_t$ (USD/PHP return) & 0.0001 & 0.0034 & -0.0132 & 0.0162 & 0.1880 & 1.7010\\
+$r^{US10Y}_t$ (US 10Y return) & 0.0003 & 0.0331 & -0.3470 & 0.4048 & 0.2756 & 31.1372\\
+$HiVol_t$ (regime dummy) & 0.0178 & 0.1323 & 0.0000 & 1.0000 & 7.2859 & 51.1112\\
+\bottomrule
+\multicolumn{7}{l}{\rule{0pt}{1em}\textit{\textit{Note.}} Sample: January 2, 2019 to April 1, 2026 (1853 observations after initialization window removal). Ex. Kurtosis is excess kurtosis (0 for normal distribution). All returns are daily log returns.}\\
+\end{tabular}}
+\end{table}

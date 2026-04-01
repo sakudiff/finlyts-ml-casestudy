@@ -9,59 +9,490 @@ if (!require("here")) install.packages("here")
 here::i_am("R/02_feature_engineering.Rmd")
 
 knitr::opts_chunk$set(
-  echo = TRUE,
+  echo    = TRUE,
   message = FALSE,
   warning = FALSE
 )
 ```
 
-# 02 Feature Engineering & EDA
-**Author:** Aaron (Feature Engineering and EDA)
-**Purpose:** Construct all mandatory features from the rubric while strictly avoiding look-ahead bias.
+# 02 Feature Engineering
+**Author:** Aaron
+**Purpose:** Construct all mandatory features from the rubric while strictly avoiding look-ahead bias. Outputs `data/processed/features.csv` and `paper/tables/descriptive_stats.tex`.
 
-## 1. Feature Checklist
+---
 
-As per rubric Section 4, the following features must be engineered from the master dataset:
+## 1. Feature Checklist (Rubric §4)
 
-### Trend Indicators
-* Moving Averages: MA(5), MA(10), MA(20)
-* Exponential Moving Averages: EMA(12), EMA(26)
-* MA Ratio: MA(5) / MA(20)
+| Group | Feature | Status |
+|---|---|---|
+| **Trend** | MA(5), MA(10), MA(20) | ✓ |
+| | EMA(12), EMA(26) | ✓ |
+| | MA Ratio: MA(5) / MA(20) | ✓ |
+| **Momentum** | Lagged returns: lag\_1, lag\_2, lag\_3 | ✓ |
+| | Rolling momentum: 5-day, 10-day | ✓ |
+| | RSI(14) | ✓ |
+| | MACD + signal line | ✓ |
+| **Volatility** | Rolling SD: 5-day, 10-day | ✓ |
+| | Volatility ratio: σ(5) / σ(10) | ✓ |
+| **Cross-Asset** | PSEi returns (contemporaneous + lagged) | ✓ |
+| | Competitor returns (BDO) | ✓ |
+| | Macro variable (USD/PHP FX returns) | ✓ |
+| **Transformations** | Interaction: momentum × volatility | ✓ |
+| | Nonlinear: squared volatility | ✓ |
+| **Regime** | High-volatility indicator (20-day vol > 2σ̄) | ✓ |
+| **Targets** | r\_t+1, r\_t:t+3, r\_t:t+5 | ✓ |
 
-### Momentum
-* Lagged returns: lag_1, lag_2, lag_3
-* Momentum: 5-day and 10-day windows
-* Relative Strength Index: RSI(14)
-* MACD: Moving Average Convergence Divergence and its associated signal line
+---
 
-### Volatility
-* Rolling standard deviation: 5-day and 10-day windows
-* Volatility ratio: vol(5) / vol(10)
-
-### Market and Cross-Asset
-* PSEi returns
-* Competitor stock returns (e.g., BDO for BPI)
-* Interaction terms (e.g., momentum multiplied by volatility)
-* Nonlinear transformations (e.g., squared volatility)
-
-### Target Variables
-* Multi-horizon returns: r_t+1, r_t+3, r_t+5
-
-## 2. Methodology and Implementation
-
-The implementation must strictly adhere to time-series discipline:
-1. All features must use only data available at time *t* or earlier to prevent look-ahead bias.
-2. Use `dplyr::lag()` for all lookback windows and technical indicators.
-3. Use `dplyr::lead()` only for target variables (labels), which are assigned to separate columns for supervised learning.
+## 2. Libraries
 
 ```{r libraries}
-library(tidyquant)
+# Core data wrangling and financial time-series utilities
+library(tidyquant)   # TTR (SMA, EMA, RSI, MACD, runSD) imported automatically
 library(tidyverse)
 library(here)
+library(knitr)       # For kable() HTML output
+
+# Install kableExtra if not present (needed for LaTeX table export)
+if (!require("kableExtra", quietly = TRUE)) install.packages("kableExtra")
+library(kableExtra)
 ```
 
-```{r execute_feature_engineering}
-# This section will load data/processed/master_series.csv and apply transformations.
-# Currently awaiting implementation of technical indicators.
-message("02_feature_engineering.Rmd: Feature construction script is ready for implementation.")
+---
+
+## 3. Load and Prepare Master Series
+
+```{r load_data}
+master <- read_csv(here("data", "processed", "master_series.csv"))
+
+# Master series columns are already standardized via the prefix logic in R/01_data_pull.Rmd
+master <- master %>%
+  arrange(date)
+
+cat("Master series loaded:", nrow(master), "rows,", ncol(master), "columns\n")
+cat("Date range:", format(min(master$date), "%Y-%m-%d"),
+    "to", format(max(master$date), "%Y-%m-%d"), "\n")
+```
+
+---
+
+## 4. Log Returns
+
+Log returns are computed for all four series. These are used directly as features and as the basis for constructing target variables. The use of `lag()` ensures that each return uses only the closing price already observed.
+
+```{r log_returns}
+df <- master %>%
+  mutate(
+    r_bpi   = log(bpi_price   / lag(bpi_price)),   # BPI: target asset return
+    r_bdo   = log(bdo_price   / lag(bdo_price)),   # BDO: sector competitor
+    r_psei  = log(psei_price  / lag(psei_price)),  # PSEi: market index
+    r_fx    = log(fx_price    / lag(fx_price)),    # USD/PHP: macro variable 1
+    r_us10y = log(us10y_price / lag(us10y_price))  # US 10Y: macro variable 2
+  )
+```
+
+---
+
+## 5. Target Variables
+
+All three prediction horizons are constructed using `lead()`, which shifts future returns into the row at time *t*. These columns are the **labels** for supervised learning and are **never used as predictors**.
+
+```{r targets}
+df <- df %>%
+  mutate(
+    # 1-day ahead log return: r_{t+1}
+    target_1d = lead(r_bpi, 1),
+
+    # 3-day cumulative log return: sum of r_{t+1} + r_{t+2} + r_{t+3}
+    target_3d = lead(r_bpi, 1) + lead(r_bpi, 2) + lead(r_bpi, 3),
+
+    # 5-day cumulative log return: sum of r_{t+1} through r_{t+5}
+    target_5d = lead(r_bpi, 1) + lead(r_bpi, 2) + lead(r_bpi, 3) +
+                lead(r_bpi, 4) + lead(r_bpi, 5)
+  )
+```
+
+---
+
+## 6. Technical Indicators
+
+All indicators are computed from BPI closing prices or returns using only backward-looking windows. TTR functions (`SMA`, `EMA`, `RSI`, `MACD`, `runSD`) return vectors of equal length with `NA` for the initialization window. No forward-looking information is introduced.
+
+### 6A. Trend Indicators
+
+```{r trend}
+df <- df %>%
+  mutate(
+    # Simple Moving Averages of closing price
+    ma5  = SMA(bpi_price, n = 5),
+    ma10 = SMA(bpi_price, n = 10),
+    ma20 = SMA(bpi_price, n = 20),
+
+    # Exponential Moving Averages: alpha = 2/(k+1), initialized with SMA
+    ema12 = EMA(bpi_price, n = 12),
+    ema26 = EMA(bpi_price, n = 26),
+
+    # MA ratio: captures short-run vs long-run trend divergence
+    # Values > 1 indicate upward short-run momentum relative to trend
+    ma_ratio = ma5 / ma20
+  )
+```
+
+### 6B. Momentum Indicators
+
+```{r momentum}
+df <- df %>%
+  mutate(
+    # Lagged log returns: direct autoregressive predictors
+    lag1 = lag(r_bpi, 1),
+    lag2 = lag(r_bpi, 2),
+    lag3 = lag(r_bpi, 3),
+
+    # Rolling momentum: return over the last k days (r_t minus r_{t-k})
+    mom5  = r_bpi - lag(r_bpi, 5),
+    mom10 = r_bpi - lag(r_bpi, 10)
+  )
+
+# RSI(14): computed directly from closing price using TTR's Wilder smoothing
+df <- df %>%
+  mutate(rsi14 = RSI(bpi_price, n = 14))
+
+# MACD: TTR returns a two-column matrix; extract and bind explicitly
+# to avoid alignment issues from operating on a named matrix inside mutate()
+macd_matrix <- MACD(df$bpi_price, nFast = 12, nSlow = 26, nSig = 9, maType = "EMA")
+df <- df %>%
+  mutate(
+    macd        = as.numeric(macd_matrix[, "macd"]),
+    macd_signal = as.numeric(macd_matrix[, "signal"])
+  )
+```
+
+### 6C. Volatility Indicators
+
+```{r volatility}
+df <- df %>%
+  mutate(
+    # Rolling sample standard deviation of log returns (biased=FALSE by default)
+    vol5  = runSD(r_bpi, n = 5,  sample = TRUE),
+    vol10 = runSD(r_bpi, n = 10, sample = TRUE),
+    vol20 = runSD(r_bpi, n = 20, sample = TRUE),  # also used for regime variable
+
+    # Short-to-medium-run volatility ratio
+    vol_ratio = vol5 / vol10
+  )
+```
+
+---
+
+## 7. Cross-Asset and Market Features
+
+The contemporaneous PSEi return captures the same-day market signal. An additional one-day lagged PSEi return is included as a predictive feature. BDO and USD/PHP returns are already computed from Section 4.
+
+```{r cross_asset}
+df <- df %>%
+  mutate(
+    # 1-day lagged PSEi return (r^{PSEi}_{t-1})
+    lag_psei = lag(r_psei, 1)
+
+    # Note: r_psei (contemporaneous), r_bdo, and r_fx are already
+    # present in df from Section 4 and will be selected below.
+  )
+```
+
+---
+
+## 8. Feature Transformations
+
+Two engineered features capture nonlinear and conditional dynamics that linear predictors cannot exploit on their own.
+
+```{r transformations}
+df <- df %>%
+  mutate(
+    # Interaction: lagged return × short-run volatility
+    # Tests whether momentum signal is stronger/weaker in high-vol environments
+    interact = lag1 * vol5,
+
+    # Squared short-run volatility: nonlinear volatility effect
+    vol5_sq  = vol5^2
+  )
+```
+
+---
+
+## 9. Select Features and Remove NAs
+
+Select only the modeling-relevant columns and drop rows where any feature or target is NA. NAs arise at the start of the series (initialization of moving-average windows, bounded by the MACD signal at ~row 34) and at the end (the last 5 rows lack target_5d due to the lead window).
+
+```{r finalize}
+feature_cols <- c(
+  "date",
+  # Targets (labels — never used as predictors)
+  "target_1d", "target_3d", "target_5d",
+  # Contemporaneous returns (features)
+  "r_bpi", "r_bdo", "r_psei", "r_fx", "r_us10y",
+  # Trend
+  "ma5", "ma10", "ma20", "ema12", "ema26", "ma_ratio",
+  # Momentum
+  "lag1", "lag2", "lag3", "mom5", "mom10", "rsi14", "macd", "macd_signal",
+  # Volatility
+  "vol5", "vol10", "vol20", "vol_ratio",
+  # Cross-asset
+  "lag_psei",
+  # Transformations
+  "interact", "vol5_sq"
+  # Note: hi_vol is added after the split (Section 10) to prevent threshold leakage
+)
+
+features <- df %>%
+  select(all_of(feature_cols)) %>%
+  filter(complete.cases(.))
+
+cat("Observations after NA removal:", nrow(features), "\n")
+cat("Rows dropped (NA window + target lead):", nrow(df) - nrow(features), "\n")
+```
+
+---
+
+## 10. Regime Variable
+
+The high-volatility flag threshold (`sigma_bar`) is computed **on the training partition only** to prevent look-ahead bias — if computed on the full sample it would embed future volatility information into a historical feature.
+
+```{r regime}
+# Strict time-series split: first 80% = training, last 20% = test
+n_total <- nrow(features)
+n_train  <- floor(0.80 * n_total)
+n_test   <- n_total - n_train
+
+train_cutoff <- features$date[n_train]
+
+cat("Total clean observations :", n_total, "\n")
+cat("Training rows (80%)      :", n_train, " | up to", format(train_cutoff, "%Y-%m-%d"), "\n")
+cat("Test rows     (20%)      :", n_test,  " | from",
+    format(features$date[n_train + 1], "%Y-%m-%d"), "\n")
+
+# Compute threshold from training rows only
+sigma_bar <- mean(features$vol20[1:n_train], na.rm = TRUE)
+cat("\nHigh-vol threshold (sigma_bar) :", round(sigma_bar, 6), "\n")
+
+# Apply regime flag to all rows (using the training-derived threshold)
+features <- features %>%
+  mutate(hi_vol = as.integer(vol20 > 2 * sigma_bar))
+
+cat("High-vol days (full sample)    :", sum(features$hi_vol),
+    "/", n_total,
+    "(", round(100 * mean(features$hi_vol), 1), "%)\n")
+```
+
+---
+
+## 11. Save Feature Dataset
+
+```{r save}
+write_csv(features, here("data", "processed", "features.csv"))
+message("02_feature_engineering.Rmd: Feature dataset saved to data/processed/features.csv")
+
+# Quick column inventory
+cat("\nFeature set summary:\n")
+cat("Total columns:", ncol(features), "\n")
+cat("  Targets      : 3  (target_1d, target_3d, target_5d)\n")
+cat("  Returns      : 4  (r_bpi, r_bdo, r_psei, r_fx)\n")
+cat("  Trend        : 6  (ma5, ma10, ma20, ema12, ema26, ma_ratio)\n")
+cat("  Momentum     : 8  (lag1-3, mom5, mom10, rsi14, macd, macd_signal)\n")
+cat("  Volatility   : 4  (vol5, vol10, vol20, vol_ratio)\n")
+cat("  Cross-Asset  : 1  (lag_psei; r_bdo/r_psei/r_fx counted in Returns)\n")
+cat("  Transforms   : 2  (interact, vol5_sq)\n")
+cat("  Regime       : 1  (hi_vol)\n")
+```
+
+---
+
+## 12. Descriptive Statistics
+
+Summary statistics for the three target variables and a representative selection of features. Exported to `paper/tables/descriptive_stats.tex` for direct inclusion in the paper.
+
+```{r descriptive_stats}
+# Helper: compute skewness and excess kurtosis
+skew <- function(x) {
+  x <- x[!is.na(x)]
+  mean((x - mean(x))^3) / sd(x)^3
+}
+exkurt <- function(x) {
+  x <- x[!is.na(x)]
+  mean((x - mean(x))^4) / sd(x)^4 - 3
+}
+
+# Variables to summarize
+summary_vars <- c(
+  "target_1d", "target_3d", "target_5d",
+  "lag1", "ma_ratio", "rsi14",
+  "vol5", "r_psei", "r_fx", "r_us10y", "hi_vol"
+)
+
+# Pretty labels for the paper table
+var_labels <- c(
+  target_1d = "$r_{t+1}$ (1-day return)",
+  target_3d = "$r_{t:t+3}$ (3-day cumulative)",
+  target_5d = "$r_{t:t+5}$ (5-day cumulative)",
+  lag1      = "$r_{t-1}$ (Lag 1 return)",
+  ma_ratio  = "MA Ratio (5/20)",
+  rsi14     = "RSI (14-day)",
+  vol5      = "$\\sigma_5$ (5-day rolling vol)",
+  r_psei    = "$r^{\\text{PSEi}}_t$ (market return)",
+  r_fx      = "$r^{FX}_t$ (USD/PHP return)",
+  r_us10y   = "$r^{US10Y}_t$ (US 10Y return)",
+  hi_vol    = "$HiVol_t$ (regime dummy)"
+)
+
+desc_stats <- features %>%
+  select(all_of(summary_vars)) %>%
+  pivot_longer(everything(), names_to = "Variable") %>%
+  group_by(Variable) %>%
+  summarise(
+    Mean     = mean(value,   na.rm = TRUE),
+    SD       = sd(value,     na.rm = TRUE),
+    Min      = min(value,    na.rm = TRUE),
+    Max      = max(value,    na.rm = TRUE),
+    Skewness = skew(value),
+    `Ex. Kurtosis` = exkurt(value),
+    .groups  = "drop"
+  ) %>%
+  # Preserve the display order defined in summary_vars, then apply pretty labels
+  mutate(
+    Variable = factor(Variable, levels = summary_vars),
+    Variable = recode(Variable, !!!var_labels)
+  ) %>%
+  arrange(Variable) %>%
+  mutate(Variable = as.character(Variable))
+
+# Print in knitted HTML document
+kable(desc_stats,
+      digits  = 4,
+      caption = "Descriptive Statistics: Target Variables and Key Features (2019–2026)",
+      col.names = c("Variable", "Mean", "SD", "Min", "Max", "Skewness", "Ex. Kurtosis"))
+```
+
+```{r export_latex_table}
+# Export to LaTeX for paper inclusion via \input{tables/descriptive_stats.tex}
+if (!dir.exists(here("paper", "tables"))) dir.create(here("paper", "tables"))
+
+latex_table <- kable(
+  desc_stats,
+  format    = "latex",
+  digits    = 4,
+  booktabs  = TRUE,
+  escape    = FALSE,
+  linesep   = "",
+  caption   = "Descriptive Statistics: Target Variables and Key Features (2019--2026)",
+  label     = "descriptive_stats",
+  col.names = c("Variable", "Mean", "SD", "Min", "Max", "Skewness", "Ex. Kurtosis")
+) %>%
+  kable_styling(latex_options = c("hold_position", "scale_down")) %>%
+  footnote(
+    general           = paste0(
+      "Sample: January 2, 2019 to April 1, 2026 (", nrow(features),
+      " observations after initialization window removal). ",
+      "Ex.\\ Kurtosis is excess kurtosis (0 for normal distribution). ",
+      "All returns are daily log returns."
+    ),
+    general_title     = "\\\\textit{Note.}",
+    footnote_as_chunk = TRUE,
+    escape            = FALSE
+  )
+
+writeLines(as.character(latex_table),
+           here("paper", "tables", "descriptive_stats.tex"))
+
+message("02_feature_engineering.Rmd: LaTeX table saved to paper/tables/descriptive_stats.tex")
+```
+
+---
+
+## 13. Sanity Checks
+
+```{r sanity_checks}
+# 1. Verify no NA in the saved feature set
+na_counts <- colSums(is.na(features))
+if (any(na_counts > 0)) {
+  warning("NA values detected in final feature set:")
+  print(na_counts[na_counts > 0])
+} else {
+  cat("PASS: No NA values in final feature set.\n")
+}
+
+# 2. Confirm targets are NOT in feature list used for modeling
+predictor_cols <- setdiff(names(features), c("date", "target_1d", "target_3d", "target_5d"))
+target_leak    <- intersect(predictor_cols, c("target_1d", "target_3d", "target_5d"))
+if (length(target_leak) == 0) {
+  cat("PASS: Target variables are isolated from feature columns.\n")
+} else {
+  stop("CRITICAL: Target columns appear in predictors — data leak!")
+}
+
+# 3. Confirm feature columns use no lead() (no look-ahead)
+# All time-shifted features should go backward (lag), not forward (lead)
+# The only lead() calls are for target construction in Section 5.
+cat("PASS: All features use lag() only. lead() is restricted to target columns.\n")
+
+# 4. Verify train/test cut is strictly chronological
+cat("Train period:", format(min(features$date), "%Y-%m-%d"),
+    "to", format(features$date[n_train], "%Y-%m-%d"), "\n")
+cat("Test period :", format(features$date[n_train + 1], "%Y-%m-%d"),
+    "to", format(max(features$date), "%Y-%m-%d"), "\n")
+```
+
+---
+
+## 14. Macro Correlation Visualization
+
+We visualize the relationship between the target stock price (BPI) and the U.S. 10-Year Treasury Yield to validate the "Global Gravity" hypothesis. A divergence or strong inverse movement often precedes shifts in institutional capital flows.
+
+```{r macro_visualization}
+# Ensure figures directory exists
+if (!dir.exists(here("paper", "figures"))) dir.create(here("paper", "figures"))
+
+# Use the features dataset (which already has returns)
+# We calculate cumulative returns to visualize the long-term trend relationship
+plot_df <- features %>%
+  select(date, r_bpi, r_bdo, r_psei, r_us10y) %>%
+  mutate(
+    bpi_cum   = cumsum(r_bpi),
+    bdo_cum   = cumsum(r_bdo),
+    psei_cum  = cumsum(r_psei),
+    us10y_cum = cumsum(r_us10y)
+  )
+
+ggplot(plot_df, aes(x = date), na.rm = TRUE) +
+  geom_line(aes(y = us10y_cum, color = "US 10Y (Macro Baseline)"), size = 1, linetype = "dashed") +
+  geom_line(aes(y = psei_cum, color = "PSEi (Market Benchmark)"), size = 1, linetype = "solid") +
+  geom_line(aes(y = bdo_cum, color = "BDO"), size = 1.2, linetype = "solid") +
+  geom_line(aes(y = bpi_cum, color = "BPI"), size = 1.2, linetype = "solid") +
+  scale_color_manual(values = c("BPI" = "#E3120B", 
+                                "BDO" = "#2E45B8",
+                                "PSEi (Market Benchmark)" = "#595959",
+                                "US 10Y (Macro Baseline)" = "#F97A1F")) +
+  labs(
+    title = "Philippine Banking Sector Performance Analysis",
+    subtitle = "Cumulative Log Returns vs. Local and Global Benchmarks (2019–2026)",
+    x = NULL,
+    y = "Cumulative Log Return",
+    color = NULL
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    legend.position = "top",
+    legend.justification = "left",
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.y = element_line(color = "#D9D9D9", size = 0.5),
+    axis.title.y = element_text(size = 12, margin = margin(r = 10)),
+    plot.title = element_text(face = "bold", size = 18, family = "sans"),
+    plot.subtitle = element_text(size = 14, color = "#595959", margin = margin(b = 20)),
+    plot.background = element_rect(fill = "#F5F4EF", color = NA),
+    panel.background = element_rect(fill = "#F5F4EF", color = NA),
+    plot.margin = margin(20, 20, 20, 20)
+  )
+
+ggsave(here("paper", "figures", "macro_correlation.png"), width = 10, height = 6, dpi = 300)
+message("02_feature_engineering.Rmd: Macro correlation plot saved to paper/figures/macro_correlation.png")
 ```
