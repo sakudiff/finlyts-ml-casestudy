@@ -38,6 +38,7 @@ library(here)
 bpi_raw  <- read_csv(here("data", "raw", "bpi.csv"))
 bdo_raw  <- read_csv(here("data", "raw", "bdo.csv"))
 psei_raw <- read_csv(here("data", "raw", "psei.csv"))
+exchange_rate_raw <- read_csv(here("data", "raw", "exchange rate.csv"))
 ```
 
 ## 2. Cleaning Function
@@ -79,7 +80,7 @@ clean_investing_data <- function(df, prefix = "") {
       ),
       
       # Remove percentage signs from the change column and convert to numeric
-      change_pct = as.numeric(gsub("%", "", change_percent))
+      change_pct = as.numeric(gsub("%", "", 'Change %'))
     ) %>%
     # Subset to the core required columns for analysis
     select(date, price, open, high, low, vol, change_pct) %>%
@@ -106,11 +107,13 @@ We apply a forward-fill (Last Observation Carried Forward) strategy to handle da
 bpi_clean  <- clean_investing_data(bpi_raw,  prefix = "bpi")
 bdo_clean  <- clean_investing_data(bdo_raw,  prefix = "bdo")
 psei_clean <- clean_investing_data(psei_raw, prefix = "psei")
+exchange_rate_clean <- clean_investing_data(exchange.rate_raw, prefix = "fx")
 
 # Join all cleaned series together by the date column
 master_data <- bpi_clean %>%
   full_join(bdo_clean, by = "date") %>%
   full_join(psei_clean, by = "date") %>%
+  full_join(exchange_rate_clean, by = "date") %>%
   arrange(date)
 
 # Filling missing data points from holidays or weekends
@@ -124,6 +127,8 @@ print("NA count per column after final cleaning and filling:")
 colSums(is.na(master_data))
 ```
 
+
+
 ## 4. Save Processed Data
 
 Finally, the master dataset is saved as a CSV file in the processed data directory. This file will serve as the primary source for feature engineering and modeling.
@@ -136,3 +141,28 @@ if (!dir.exists(here("data", "processed"))) dir.create(here("data", "processed")
 write_csv(master_data, here("data", "processed", "master_series.csv"))
 message("01_data_pull.R: Processed master series successfully saved to data/processed/master_series.csv")
 ```
+
+## Complete Daily Time Index
+
+```{r}
+full_dates <- tibble(
+  date = seq(min(bpi_clean$date), max(bpi_clean$date), by = "day")
+)
+```
+
+```{r}
+master_data <- full_dates %>%
+  left_join(bpi_clean, by = "date") %>%
+  left_join(bdo_clean, by = "date") %>%
+  left_join(psei_clean, by = "date") %>%
+  left_join(exchange_rate_clean, by = "date") %>%
+  arrange(date)
+```
+
+
+
+
+
+
+
+
