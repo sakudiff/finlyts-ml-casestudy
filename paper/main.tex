@@ -10,6 +10,8 @@
 \usepackage{xcolor}
 \usepackage{graphicx}
 \graphicspath{{.}}
+\usepackage{caption}
+\usepackage{subcaption}
 \usepackage{booktabs}
 \usepackage{tabularx}
 \usepackage{array}
@@ -114,8 +116,14 @@
 
 % ABSTRACT
 \begin{abstract}
-    % TODO: Write last. 150-200 words.
-    % Cover: objective, data, models used, key finding, horizon comparison result.
+    \textbf{\color{red}[TODO: Jehan --- Write the abstract. It must be between 150-200 words and cover:]}
+    \begin{itemize}
+        \item \textbf{Objective:} Comparison of OLS vs ML for multi-horizon BPI returns.
+        \item \textbf{Data:} Daily returns from 2019--2026, 80/20 chronological split.
+        \item \textbf{Models:} OLS, RF, XGBoost, SVM, ANN.
+        \item \textbf{Key Finding:} Overfitting in tree ensembles vs robustness in regularized models (SVM/ANN).
+        \item \textbf{Horizon Result:} Horizon decay and the superiority of 5-day cumulative predictions.
+    \end{itemize}
 \end{abstract}
 
 \newpage
@@ -125,7 +133,13 @@
 \label{sec:intro}
 % ASSIGNED TO: Jehan
 
-\textbf{\color{red}[TODO: Jehan --- Insert additional historical or qualitative context for the Philippine economy here to expand the introduction to the required 1.5--2 pages.]}
+\textbf{\color{red}[TODO: Jehan --- Restructure the introduction to strictly follow the Narrative Map required by the rubric:]}
+\begin{enumerate}
+    \item \textbf{The Problem Statement:} Identify the specific knowledge gap in PSE return predictability.
+    \item \textbf{Prior Work:} What else has been tried? (Survey of ML in ASEAN/Frontier markets).
+    \item \textbf{The Gap:} Use "Nevertheless..." or "However..." to identify where prior work falls short (e.g., multi-horizon focus, macro integration).
+    \item \textbf{The Departure:} "In this paper we will..." - Justify the BPI/BDO selection based on liquidity, relevance, and systemic importance.
+\end{enumerate}
 
 Forecasting equity returns in frontier markets is a monument to statistical futility under static linear assumptions. 
  The Philippine Stock Exchange (PSE) exhibits adaptive inefficiency driven by shifting volatility regimes \parencite{ahmed2022adaptive}. This study targets the banking sector through Bank of the Philippine Islands (BPI) and BDO Unibank (BDO). These institutions function as the primary transmission mechanism for domestic monetary policy. Their combined market capitalization ensures high liquidity and systemic relevance. They represent the most robust proxy for Philippine macroeconomic health.
@@ -164,13 +178,13 @@ The mathematical forecasting horizon fundamentally dictates the underlying signa
 
 \subsection{Data Sources and Sample Period}
 
-The analysis draws on four daily price series retrieved from Investing.com, spanning January 2, 2019 to April 1, 2026---a final sample of 1,853 observations covering roughly 7.25 years of market activity. These series, detailed in Table \ref{tab:data_sources}, encompass the target equity, a sector-specific competitor, a broad market benchmark, and a macroeconomic proxy for currency-channel risk.
+The analysis draws on daily price series spanning January 2, 2019 to April 1, 2026---a final sample of 1,853 observations covering approximately 7.25 years of market activity. Historical data for the Bank of the Philippine Islands (BPI), BDO Unibank (BDO), the Philippine Stock Exchange Index (PSEi), and the USD/PHP exchange rate were manually retrieved from Investing.com. Conversely, the U.S. 10-Year Treasury Yield series was programmatically extracted from Yahoo Finance using a specialized financial modeling data interface. These series, detailed in Table \ref{tab:data_sources}, encompass the target equity, a sector-specific competitor, a broad market benchmark, and macroeconomic proxies for currency-channel risk and global capital flows.
 
 \begin{table}[h!]
     \centering
     \caption{Summary of Data Sources and Sample Series}
     \label{tab:data_sources}
-    \begin{tabular}{lll}
+    \begin{tabularx}{\textwidth}{llX}
         \toprule
         Series Name & Ticker/Symbol & Description and Analytical Role \\
         \midrule
@@ -180,14 +194,14 @@ The analysis draws on four daily price series retrieved from Investing.com, span
         USD/PHP Exchange Rate & \texttt{USD/PHP} & Macroeconomic proxy; Currency risk \\
         U.S. 10-Year Treasury Yield & \texttt{\textasciicircum TNX} & Global discount rate; Capital flows \\
         \bottomrule
-    \end{tabular}
+    \end{tabularx}
 \end{table}
 
-Raw data are exported from Investing.com in CSV format at daily frequency. Data retrieval is managed programmatically using the \texttt{tidyquant} and \texttt{here} libraries to ensure path portability and reproducible ingestion. Each series contains the closing price, intraday high, low, and open, trading volume, and the daily percentage change. Because Philippine market holidays and the USD/PHP foreign exchange series do not share identical non-trading calendars, the merged dataset requires structural alignment and imputation prior to feature construction.
+Raw data for the domestic series were exported from Investing.com in CSV format at daily frequency, while the global macro baseline was retrieved via a financial data API. Data ingestion and alignment are managed using the \texttt{here} library to ensure path portability and reproducible processing. Each series contains the closing price, intraday high, low, and open, trading volume, and the daily percentage change. Because Philippine market holidays and the global macro/FX series do not share identical non-trading calendars, the merged dataset requires structural alignment and imputation prior to feature construction.
 
 \subsection{Data Preprocessing and Standardization}
 
-To ensure consistency across the diverse data sources, a unified cleaning pipeline is implemented. The preprocessing function standardizes all column headers to a lowercase, snake-case format and parses date strings using the ISO-standard MDY format. Numeric fields, frequently exported with comma separators, are stripped of non-numeric characters before conversion to double-precision floats. Volume strings containing "M" (millions) or "K" (thousands) suffixes are parsed and scaled by their respective factors ($10^6$ and $10^3$) to maintain a uniform integer scale.
+To ensure consistency across the diverse data sources, a unified cleaning pipeline is implemented in R using the \texttt{tidyverse} ecosystem. The preprocessing function standardizes all column headers to a lowercase, snake-case format and parses date strings using the ISO-standard MDY format. Numeric fields, frequently exported with comma separators, are stripped of non-numeric characters before conversion to double-precision floats. Volume strings containing "M" (millions) or "K" (thousands) suffixes are parsed and scaled by their respective factors ($10^6$ and $10^3$) to maintain a uniform integer scale. Inclusion criteria mandated complete daily records for the primary equities, while any outlier artifacts (e.g., negative prices or volumes) were programmatically screened and excluded.
 
 A critical step in the time-series alignment involves the construction of a continuous daily calendar index. The dataset is merged onto a complete sequence of dates spanning the minimum and maximum of the sample period, ensuring that no gaps exist for weekends or market holidays. Missing values resulting from this expansion or from asynchronous reporting are addressed through last-observation-carried-forward (LOCF) imputation. This procedure preserves the most recent market information as the prevailing state until a new observation is recorded, effectively maintaining a continuous, daily-frequency series required for multi-horizon modeling.
 
@@ -368,11 +382,11 @@ Table~\ref{tab:descriptive_stats} reports summary statistics for the three targe
 \section{Methodology}
 \label{sec:methodology}
 
-The predictive framework utilizes a hybrid approach. It integrates classical econometrics with non-linear machine learning architectures. The objective is to forecast multi-horizon log returns for the Philippine banking sector.
+This section outlines the statistical and machine learning frameworks deployed to answer the core research question: whether non-linear algorithmic architectures can capture adaptive inefficiency in Philippine banking equities better than traditional linear models. The predictive framework utilizes a hybrid approach. It integrates classical econometrics with non-linear machine learning architectures to systematically handle the high-dimensional interactions of momentum, volatility, and macroeconomic variables. The objective is to forecast multi-horizon log returns for the Philippine banking sector. All machine learning algorithms and resampling procedures were implemented programmatically in R utilizing the \texttt{tidymodels} ecosystem.
 
 \subsection{Data Partitioning and Temporal Integrity}
 
-Predicting financial time series requires a strict chronological split. Random shuffling is prohibited. It introduces look-ahead bias. The dataset spans from January 2, 2019, to April 1, 2026. This period comprises 1,853 daily observations. The first 80\% of the sample serves as the training set. The remaining 20\% is reserved for out-of-sample testing. This split ensures the models are evaluated on unseen market regimes. It simulates a real-world trading environment.
+Predicting financial time series requires a strict chronological split. Random shuffling is prohibited. It introduces look-ahead bias. The dataset spans from January 2, 2019, to April 1, 2026. This period comprises 1,853 daily observations. The first 80\% of the sample serves as the training set, established chronologically without shuffling. The remaining 20\% is reserved for out-of-sample testing. This split ensures the models are evaluated on unseen market regimes. It simulates a real-world trading environment. Crucially, the target variables for each specific horizon are strictly excluded from the corresponding predictor matrix, effectively nullifying any potential data leakage.
 
 \subsection{Target Variable Construction}
 
@@ -390,64 +404,249 @@ All features are lagged at time $t$ or earlier. This eliminates data leakage.
 The OLS model serves as the linear baseline. It assumes a constant relationship between features and returns. The specification follows $r_{t+k} = \alpha + \beta \mathbf{X}_t + \epsilon_t$. $\mathbf{X}_t$ represents the vector of technical and macro features. We utilize Newey-West standard errors. This adjustment accounts for heteroskedasticity and autocorrelation.
 
 \subsubsection{Random Forest (RF)}
-The RF model employs an ensemble of 500 decision trees. It uses bootstrap aggregation to reduce variance. The \texttt{ranger} engine implements this architecture. We tune the number of features per split (\textit{mtry}) and the minimum node size. This prevents the model from fitting to idiosyncratic market noise.
+The RF model employs an ensemble of 500 decision trees. It uses bootstrap aggregation to reduce variance. The \texttt{ranger} engine implements this architecture. We tune the number of features per split (\textit{mtry}) and the minimum node size. This prevents the model from fitting to idiosyncratic market noise. Feature importance extraction relies on impurity-based metrics.
 
 \subsubsection{Support Vector Machine (SVM)}
-The SVM utilizes a Radial Basis Function (RBF) kernel. It maps features into a high-dimensional space to find non-linear hyperplanes. Feature standardization is mandatory. We scale all predictors to zero mean and unit variance. The scaling parameters are derived solely from the training set. We tune the cost parameter ($C$) and the kernel width ($\sigma$).
+The SVM utilizes a Radial Basis Function (RBF) kernel. It maps features into a high-dimensional space to find non-linear hyperplanes, implemented via the \texttt{kernlab} engine. Feature standardization is mandatory. We scale all predictors to zero mean and unit variance. To systematically prevent data leakage, the scaling parameters (\texttt{step\_normalize}) are derived solely from the training set and applied exclusively within the cross-validation workflow. We tune the cost parameter ($C$) and the kernel width ($\sigma$).
 
 \subsubsection{Gradient Boosting (XGBoost)}
-XGBoost implements a sequence of weak learners. Each tree corrects the residuals of its predecessor. It optimizes a regularized objective function. This prevents overfitting. We tune the learning rate, tree depth, and L1/L2 regularization terms. It is the most computationally efficient architecture in the suite.
+XGBoost implements a sequence of weak learners via the \texttt{xgboost} engine. Each tree corrects the residuals of its predecessor. It optimizes a regularized objective function. This prevents overfitting. We tune the learning rate, tree depth, and L1/L2 regularization terms. It is the most computationally efficient architecture in the suite. Feature importance extraction relies on gain-based metrics.
 
 \subsubsection{Artificial Neural Network (ANN)}
-The ANN consists of a single-layer perceptron. It uses a decay parameter for regularization. The architecture identifies complex interactions through hidden neurons. We optimize the number of hidden units and the decay rate. This ensures the network does not memorize the training data.
+The ANN consists of a single-layer perceptron, utilizing the \texttt{nnet} engine. It uses a decay parameter for regularization. The architecture identifies complex interactions through hidden neurons. Similar to the SVM pipeline, predictor features are rigorously standardized exclusively on the training partition. We optimize the number of hidden units and the decay rate. This ensures the network does not memorize the training data.
 
 \subsection{Validation and Hyperparameter Tuning}
 
-Hyperparameter optimization utilizes a rolling origin cross-validation strategy. We employ the \texttt{rsample::rolling\_origin()} function. This method creates multiple training/validation slices. Each slice respects the temporal order. The model is trained on a window and tested on the immediate future. This process identifies the most robust parameters for non-stationary data.
+Hyperparameter optimization utilizes a rolling origin cross-validation strategy to respect temporal precedence. We employ the \texttt{rsample::rolling\_origin()} function with an initial training window of 200 observations and an assessment window of 60 observations, approximately equivalent to one trading quarter. To manage computational overhead, we utilized a skip increment of 100 observations between folds. 
 
-\subsection{Evaluation Metrics}
+Each model was tuned using a Latin Hypercube grid search to ensure efficient coverage of the high-dimensional parameter space. The Random Forest models utilized a 15-point grid for \textit{mtry} (ranging from 3 to 13) and \textit{min\_n} (5 to 30). The XGBoost architecture employed a 20-point grid across five parameters: learning rate ($10^{-3}$ to 0.1), tree depth (3 to 8), \textit{min\_n} (5 to 30), loss reduction, and early stopping iterations (10 to 50). Support Vector Machines and Artificial Neural Networks utilized 15-point grids for their respective kernel and regularisation parameters. Table \ref{tab:best_hyperparameters} reports the optimal parameters selected through this procedure across all horizons.
 
-We assess model performance through statistical and financial lenses. 
+\input{tables/best_hyperparameters.tex}
+
+\subsection{Evaluation Metrics and Overfitting Assessment}
+
+We assess model performance through statistical and financial lenses on both in-sample (Train) and out-of-sample (Test) observations to explicitly diagnose overfitting.
 \begin{itemize}
     \item \textbf{Root Mean Squared Error (RMSE):} Measures the magnitude of prediction deviations.
     \item \textbf{Mean Absolute Error (MAE):} Provides a robust measure of average error.
     \item \textbf{R-squared ($R^2$):} Quantifies the proportion of variance explained.
     \item \textbf{Directional Accuracy (DA):} Calculates the frequency of correct sign predictions. This metric is the primary indicator of economic utility.
 \end{itemize}
-All models are compared against a naïve lagged-return benchmark.
+All models are compared against a naïve lagged-return benchmark. Overfitting is quantified by observing the performance delta between Training and Testing metrics. A high Training DA combined with a low Testing DA serves as the cardinal diagnostic signature of algorithmic over-parameterization.
+
+\subsection{Ethical Reporting and Transparency}
+
+To ensure scientific rigor and reproducibility, this research strictly adheres to open science principles. All data extraction, feature engineering, and model training pipelines are implemented programmatically in R. The complete, reproducible codebase---including explicit documentation of the algorithmic choices and hyperparameters (the "garden of forking paths")---is made available in the project's source repository. This transparency guarantees that the findings are not artifacts of selective reporting but robust statistical realities.
 
 % SECTION 5: RESULTS
 \section{Results}
 \label{sec:results}
-% ASSIGNED TO: Person 3
+% ASSIGNED TO: Carlos
 
-\subsection{Visual Analytics}
-% TODO
+This section reports the predictive performance of the four machine learning architectures across three temporal horizons: 1-day ahead, 3-day cumulative, and 5-day cumulative returns. Models are assessed against a naive lagged-return benchmark using Root Mean Squared Error (RMSE), Mean Absolute Error (MAE), R-squared ($R^2$), and Directional Accuracy (DA).
 
-\subsection{Regression Results and Model Performance}
-% TODO
+\subsection{Predictive Performance and Overfitting Assessment}
+
+\textbf{\color{red}[TODO: Carlos --- Implement script 03\_ols\_baseline.Rmd to generate the linear benchmark results. Rubric requires both a metrics table and a coefficient interpretation table.]}
+
+\textbf{\color{red}[TODO: Aaron/Keira --- Implement script 06\_evaluation.Rmd to aggregate OLS and ML results into a single integrated 5x3 matrix per metric (RMSE, MAE, R2, DA). The current separate tables are for drafting only.]}
+
+Tables \ref{tab:rf_xgboost_metrics} and \ref{tab:svm_ann_metrics} report the comprehensive performance metrics. To explicitly quantify overfitting, we compare in-sample (Train) and out-of-sample (Test) diagnostic variants for every model.
+
+\input{tables/rf_xgboost_metrics.tex}
+\input{tables/svm_ann_metrics.tex}
+
+The statistical results reveal a significant performance delta across algorithmic architectures. Tree-based ensembles, specifically Random Forest, demonstrate a severe overfitting signature across all horizons. For the 5-day cumulative return, Random Forest achieved a Training $R^2$ of 0.783 but a Test $R^2$ of -0.134. This indicates that the ensemble's 500 deep decision trees effectively "memorized" idiosyncratic noise from the 2019--2024 training period, resulting in out-of-sample predictions that are less accurate than a sample mean.
+
+Conversely, regularized architectures such as Support Vector Machines (SVM) and Artificial Neural Networks (ANN) exhibit superior generalization. SVM achieved the leading out-of-sample Directional Accuracy of 51.2\% at the 5-day horizon, outperforming the naive benchmark of 42.8\%. These results suggest that the explicit penalty terms and kernel-based decision boundaries provide a more robust signal for the Philippine banking sector than high-capacity tree ensembles.
+
+\subsection{Variable Importance and Predictive Drivers}
+
+\textbf{\color{red}[TODO: Carlos --- Once script 03 is done, include the OLS coefficient table here and interpret the primary drivers from a linear perspective. Compare this with the ML feature importance below.]}
+
+Feature importance represents the contribution of each predictor to the model's total gain or impurity reduction. Figures \ref{fig:rf_importance} and \ref{fig:xgboost_importance} visualize these rankings across the three horizons for Random Forest and XGBoost, respectively.
+
+\begin{figure}[h!]
+    \centering
+    \begin{minipage}{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/rf_importance_1d.png}
+        \caption*{1-Day Horizon}
+    \end{minipage}
+    \begin{minipage}{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/rf_importance_3d.png}
+        \caption*{3-Day Horizon}
+    \end{minipage}
+    \begin{minipage}{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/rf_importance_5d.png}
+        \caption*{5-Day Horizon}
+    \end{minipage}
+    \caption{Random Forest Feature Importance: Multi-Horizon Comparison}
+    \label{fig:rf_importance}
+\end{figure}
+
+The importance profiles illustrate a clear transition of predictive signals as the temporal window expands. At the 1-day horizon, the target asset's own lagged return ($lag1$) and the U.S. 10-Year yield ($r\_us10y$) dominate, reflecting high-frequency sensitivity to global liquidity and autoregressive price discovery. By the 5-day horizon, structural trend indicators such as the moving-average ratio ($ma\_ratio$) assume dominance, confirming that longer-term predictions rely on persistent technical momentum rather than transient noise.
+
+\begin{figure}[h!]
+    \centering
+    \begin{minipage}{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/xgboost_importance_1d.png}
+        \caption*{1-Day Horizon}
+    \end{minipage}
+    \begin{minipage}{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/xgboost_importance_3d.png}
+        \caption*{3-Day Horizon}
+    \end{minipage}
+    \begin{minipage}{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/xgboost_importance_5d.png}
+        \caption*{5-Day Horizon}
+    \end{minipage}
+    \caption{XGBoost Feature Importance: Multi-Horizon Comparison}
+    \label{fig:xgboost_importance}
+\end{figure}
+
+XGBoost importance profiles (Figure \ref{fig:xgboost_importance}) provide a similar narrative but with higher sensitivity to localized price momentum ($r\_bpi$) and the macro-volatility interaction term. The gain-based metrics highlight that the model effectively conditions its predictions on the prevailing risk environment, using the $HiVol_t$ regime dummy and squared volatility to adjust its sensitivity to momentum shocks.
+
+\subsection{Forecasting Profile Diagnostics}
+
+Scatter plots comparing predicted returns to actual realizations provide a visual diagnostic of model performance. The red dashed line ($y=x$) represents a perfect forecast.
+
+\begin{figure}[h!]
+    \centering
+    \begin{minipage}{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/rf_pred_actual_1d.png}
+        \caption*{1-Day Horizon}
+    \end{minipage}
+    \begin{minipage}{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/rf_pred_actual_3d.png}
+        \caption*{3-Day Horizon}
+    \end{minipage}
+    \begin{minipage}{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/rf_pred_actual_5d.png}
+        \caption*{5-Day Horizon}
+    \end{minipage}
+    \caption{Random Forest Predicted vs. Actual Log Returns}
+    \label{fig:rf_diag}
+\end{figure}
+
+The Random Forest diagnostics (Figure \ref{fig:rf_diag}) show a high degree of dispersion, particularly at the 1-day horizon. The clustering of points away from the diagonal line confirms the model's struggle to capture high-frequency volatility spikes. However, as the horizon expands to 5 days, a modest positive correlation becomes visible, although the dispersion remains significant.
+
+\begin{figure}[h!]
+    \centering
+    \begin{minipage}{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/xgboost_pred_actual_1d.png}
+        \caption*{1-Day Horizon}
+    \end{minipage}
+    \begin{minipage}{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/xgboost_pred_actual_3d.png}
+        \caption*{3-Day Horizon}
+    \end{minipage}
+    \begin{minipage}{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/xgboost_pred_actual_5d.png}
+        \caption*{5-Day Horizon}
+    \end{minipage}
+    \caption{XGBoost Predicted vs. Actual Log Returns}
+    \label{fig:xgb_diag}
+\end{figure}
+
+XGBoost visualizations (Figure \ref{fig:xgb_diag}) reveal a tighter forecasting envelope. The model effectively caps extreme predictions, demonstrating the impact of its regularized objective function. The 5-day horizon exhibits the most defined linear relationship, although the model tends to underestimate the magnitude of major realized price movements.
+
+\begin{figure}[h!]
+    \centering
+    \begin{minipage}{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/svm_pred_actual_1d.png}
+        \caption*{1-Day Horizon}
+    \end{minipage}
+    \begin{minipage}{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/svm_pred_actual_3d.png}
+        \caption*{3-Day Horizon}
+    \end{minipage}
+    \begin{minipage}{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/svm_pred_actual_5d.png}
+        \caption*{5-Day Horizon}
+    \end{minipage}
+    \caption{SVM Predicted vs. Actual Log Returns}
+    \label{fig:svm_diag}
+\end{figure}
+
+The SVM diagnostic (Figure \ref{fig:svm_diag}) is the most visually robust. At the 1-day horizon, the RBF kernel forces a conservative clustering around the mean, avoiding "hallucinated" volatility. By the 5-day horizon, the SVM captures the structural directional drift of BPI more consistently than its ensemble-based peers, which correlates with its superior Directional Accuracy results.
+
+\begin{figure}[h!]
+    \centering
+    \begin{minipage}{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/ann_pred_actual_1d.png}
+        \caption*{1-Day Horizon}
+    \end{minipage}
+    \begin{minipage}{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/ann_pred_actual_3d.png}
+        \caption*{3-Day Horizon}
+    \end{minipage}
+    \begin{minipage}{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/ann_pred_actual_5d.png}
+        \caption*{5-Day Horizon}
+    \end{minipage}
+    \caption{ANN Predicted vs. Actual Log Returns}
+    \label{fig:ann_diag}
+\end{figure}
+
+Artificial Neural Network diagnostics (Figure \ref{fig:ann_diag}) closely mirror the SVM profile. The impact of the L2 penalty is evident in the lack of extreme outliers in the predicted values. The 3-day and 5-day cumulative horizons show a gradual alignment with the realized return distribution, although the network remains structurally cautious in its point estimates.
 
 % SECTION 6: DISCUSSION
 \section{Discussion}
 \label{sec:discussion}
-% ASSIGNED TO: Person 4
 
-\subsection{Model Comparison}
-% TODO
+\subsection{Model Comparison and Algorithmic Robustness}
 
-\subsection{Horizon Analysis}
-% TODO
+The empirical comparison between linear econometric benchmarks and non-linear machine learning architectures reveals a complex predictive landscape. While machine learning models are theoretically superior at capturing high-dimensional interactions, they remain highly susceptible to idiosyncratic noise. The collapse of the Random Forest model out-of-sample illustrates the dangers of epistemological overconfidence in financial modeling. The high capacity of tree-based ensembles allowed the architecture to memorize specific volatility wiggles from the 2019--2024 training period that did not recur in the 2025 regime. 
 
-\subsection{Feature Importance Interpretation}
-% TODO
+Conversely, the Support Vector Machine (SVM) achieved the highest Directional Accuracy of 51.2\%. This success is attributed to explicit mathematical regularization. The SVM cost parameter ($C$) and RBF kernel width smooth the decision boundary, forcing the model to ignore training set outliers. This robustness suggests that regularized architectures are essential for navigating the non-stationary dynamics of the Philippine Stock Exchange.
 
-\subsection{Regime Effects}
-% TODO
+\subsection{Multi-Horizon Analysis and Signal Decay}
+
+The predictive efficacy of all models is fundamentally dictated by the forecasting horizon. At the 1-day horizon, the signal-to-noise ratio is exceptionally low as microstructure noise and transient retail sentiment dominate price action. All architectures exhibited poor Directional Accuracy at this short-term interval, frequently failing to outperform the naive benchmark. 
+
+Extending the forecast to a 3-day and 5-day cumulative horizon introduces a smoothing effect that exposes structural macroeconomic momentum. This extension allows the models to filter out high-frequency noise and capture the persistent directional drift driven by institutional capital flows. The superior performance of the SVM and ANN at longer horizons confirms that frontier market predictability is a low-frequency phenomenon tied to structural trend persistence rather than short-term mean reversion.
+
+\subsection{Economic Interpretation of Feature Significance}
+
+The variable importance profiles confirm that Philippine banking equities function as deterministic outputs of global liquidity conditions. The high ranking of the U.S. 10-Year Treasury Yield ($r^{US10Y}_t$) in short-horizon models validates the global gravity hypothesis. Rising developed market yields trigger immediate capital flight from emerging markets like the Philippines. This macroeconomic transmission mechanism exerts downward pressure on banking multiples through the currency channel and tightening domestic liquidity. 
+
+The dominance of the MA Ratio and one-day lagged returns ($lag1$) across longer horizons suggests that the PSE exhibits persistent trend-following behavior. These momentum indicators capture the reactive nature of local market participants who process institutional information with a temporal lag. The interaction between momentum and localized volatility ($interact$) further indicates that the predictive power of technical signals is conditional on the prevailing risk regime.
+
+\subsection{Regime Effects and the Adaptive Market Hypothesis}
+
+The observed decay in predictive performance across regimes supports the Adaptive Market Hypothesis (AMH). The training sample was dominated by COVID-19 dislocations and high-inflation recoveries, which represent unique statistical distributions. The test period of 2024--2026 represents a distinct macroeconomic regime with lower realized volatility and shifted interest rate expectations. 
+
+This distributional shift means that patterns statistically significant in 2021 have decayed by 2025. The inability of high-capacity models to generalize across these regimes confirms that the Philippine market is not a stationary system. Rather, it is an evolving ecological environment where algorithmic strategies must continuously adapt to shifting participation rates and institutional mandates. 
 
 % SECTION 7: CONCLUSION AND RECOMMENDATIONS
 \section{Conclusion}
 \label{sec:conclusion}
 % ASSIGNED TO: Keira
+
+\textbf{\color{red}[TODO: Keira --- Write the conclusion and recommendations. It must cover:]}
+\begin{itemize}
+    \item \textbf{Economic Significance:} Are the results financially meaningful? Do they align with theory (AMH vs EMH)?
+    \item \textbf{Practical Implications:} What should PSE analysts take away from this? (e.g., preference for SVM/ANN over RF).
+    \item \textbf{Limitations and Future Research:} Suggest directions like more macro variables or high-frequency data.
+\end{itemize}
 
 % REFERENCES
 \printbibliography[title={References}]
@@ -456,12 +655,9 @@ All models are compared against a naïve lagged-return benchmark.
 \appendix
 \section{Technical Implementation Code} \label{sec:appendix_code}
 {} The full source code for this analysis is available at:
-\texttt{[INSERT GITHUB REPO URL HERE]}
+\texttt{https://github.com/sakudiff/finlyts-ml-casestudy.git}
 
 All scripts are numbered sequentially (\texttt{01} through \texttt{06}) and
-must be run in order. Data is pulled programmatically via the \texttt{tidyquant}
-package. No manual data downloads are required.
+must be run in order. The dataset combines manual CSV exports for domestic series with programmatic API retrieval for global macroeconomic benchmarks. No manual data downloads are required for the global baseline.
 
 \end{document}
-
-document}

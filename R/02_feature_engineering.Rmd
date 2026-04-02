@@ -399,10 +399,13 @@ latex_table <- kable(
     escape            = FALSE
   )
 
-writeLines(as.character(latex_table),
-           here("paper", "tables", "descriptive_stats.tex"))
-
+writeLines(
+  as.character(latex_table) %>%
+    str_replace_all("\\\\multicolumn\\{7\\}\\{l\\}", "\\\\multicolumn{7}{p{\\\\linewidth}}"),
+  here("paper", "tables", "descriptive_stats.tex")
+)
 message("02_feature_engineering.Rmd: LaTeX table saved to paper/tables/descriptive_stats.tex")
+
 ```
 
 ---
