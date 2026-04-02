@@ -124,19 +124,42 @@ cat("Test set                :", n_test,
 Computes RMSE, MAE, R² (out-of-sample), Directional Accuracy, and Naïve Directional Accuracy for one model-horizon evaluation. The naïve benchmark is the previous day's BPI log return (`lag1`) as a stand-in prediction.
 
 ```{r metrics_fn}
-compute_metrics <- function(actual, predicted, naive_pred, model, horizon) {
-  ss_res   <- sum((actual - predicted)^2)
-  ss_total <- sum((actual - mean(actual))^2)
+compute_metrics <- function(test_actual, test_pred, train_actual, train_pred, naive_pred, model, horizon) {
+  test_ss_res   <- sum((test_actual - test_pred)^2)
+  test_ss_total <- sum((test_actual - mean(test_actual))^2)
+  train_ss_res  <- sum((train_actual - train_pred)^2)
+  train_ss_total <- sum((train_actual - mean(train_actual))^2)
 
   tibble(
-    Model    = model,
-    Horizon  = horizon,
-    RMSE     = sqrt(mean((actual - predicted)^2)),
-    MAE      = mean(abs(actual - predicted)),
-    R2       = 1 - ss_res / ss_total,   # can be negative out-of-sample
-    DA       = mean(sign(predicted) == sign(actual)),
-    Naive_DA = mean(sign(naive_pred) == sign(actual))
+    Model      = model,
+    Horizon    = horizon,
+    RMSE       = sqrt(mean((test_actual - test_pred)^2)),
+    MAE        = mean(abs(test_actual - test_pred)),
+    R2         = 1 - test_ss_res / test_ss_total,
+    DA         = mean(sign(test_pred) == sign(test_actual)),
+    Naive_DA   = mean(sign(naive_pred) == sign(test_actual)),
+    Train_RMSE = sqrt(mean((train_actual - train_pred)^2)),
+    Train_MAE  = mean(abs(train_actual - train_pred)),
+    Train_R2   = 1 - train_ss_res / train_ss_total,
+    Train_DA   = mean(sign(train_pred) == sign(train_actual))
   )
+}
+
+# QVRS Economist Theme
+theme_quant <- function() {
+  theme_minimal() +
+    theme(
+      text = element_text(color = "#0D0D0D"), 
+      plot.title = element_text(face = "bold", size = 14, margin = margin(b = 5)),
+      plot.subtitle = element_text(size = 11, color = "#333333", margin = margin(b = 10)),
+      plot.caption = element_text(size = 8, color = "#595959", hjust = 0, margin = margin(t = 10)),
+      axis.title = element_text(size = 10, face = "bold"),
+      axis.text = element_text(size = 9),
+      panel.grid.minor = element_blank(),
+      panel.grid.major = element_line(color = "#F2F2F2", linewidth = 0.3),
+      legend.position = "bottom",
+      axis.ticks = element_blank()
+    )
 }
 ```
 
@@ -210,7 +233,7 @@ for (h in seq_along(TARGET_COLS)) {
     resamples = cv_h,
     grid      = rf_grid,
     metrics   = metric_set(rmse, mae, rsq),
-    control   = control_grid(verbose = FALSE, save_pred = FALSE)
+    control   = control_grid(verbose = TRUE, save_pred = FALSE)
   )
 
   best_rf <- select_best(rf_tune, metric = "rmse")
@@ -219,51 +242,66 @@ for (h in seq_along(TARGET_COLS)) {
   final_rf_wf  <- finalize_workflow(rf_wf, best_rf)
   final_rf_fit <- fit(final_rf_wf, data = train_h)
 
-  rf_preds    <- predict(final_rf_fit, new_data = test_h)$.pred
-  naive_preds <- test_df$lag1   # previous day's return as naive benchmark
+  rf_preds       <- predict(final_rf_fit, new_data = test_h)$.pred
+  rf_train_preds <- predict(final_rf_fit, new_data = train_h)$.pred
+  naive_preds    <- test_df$lag1   # previous day's return as naive benchmark
 
   rf_metrics_list[[h]] <- compute_metrics(
-    actual     = test_h[[target_col]],
-    predicted  = rf_preds,
-    naive_pred = naive_preds,
-    model      = "Random Forest",
-    horizon    = horizon_label
+    test_actual  = test_h[[target_col]],
+    test_pred    = rf_preds,
+    train_actual = train_h[[target_col]],
+    train_pred   = rf_train_preds,
+    naive_pred   = naive_preds,
+    model        = "Random Forest",
+    horizon      = horizon_label
   )
   cat("RMSE:", round(rf_metrics_list[[h]]$RMSE, 6),
       "| DA:",  round(rf_metrics_list[[h]]$DA,   4),
       "| Naive DA:", round(rf_metrics_list[[h]]$Naive_DA, 4), "\n")
 
+  # 1. Feature Importance Plot
   vip_plot <- final_rf_fit %>%
     extract_fit_parsnip() %>%
-    vip(num_features = 15) +
+    vip(num_features = 15, aesthetics = list(fill = "#141F52", alpha = 0.9)) +
     labs(
       title    = "Random Forest — Feature Importance (Top 15)",
-      subtitle = paste0(
-        toupper(horizon_label), " Horizon | ",
-        "Test RMSE: ", round(rf_metrics_list[[h]]$RMSE, 6)
-      ),
+      subtitle = paste0(toupper(horizon_label), " Horizon | Test RMSE: ", round(rf_metrics_list[[h]]$RMSE, 6)),
+      caption  = "Source: Custom Machine Learning Pipeline. Out-of-sample testing on 20% holdout.",
       x = "Impurity-Based Importance",
       y = NULL
     ) +
-    theme_minimal(base_size = 12) +
-    theme(
-      plot.title         = element_text(face = "bold"),
-      plot.subtitle      = element_text(color = "#595959"),
-      panel.grid.major.y = element_blank()
-    )
+    theme_quant()
 
   ggsave(
     here("paper", "figures", paste0("rf_importance_", horizon_label, ".png")),
     vip_plot,
     width = 8, height = 6, dpi = 300
   )
-  cat("Importance plot saved: paper/figures/rf_importance_", horizon_label, ".png\n", sep = "")
+  
+  # 2. Predicted vs Actual Plot
+  pred_vs_actual_plot <- ggplot(tibble(Actual = test_h[[target_col]], Predicted = rf_preds), aes(x = Actual, y = Predicted)) +
+    geom_point(color = "#141F52", alpha = 0.6) +
+    geom_abline(intercept = 0, slope = 1, color = "#E3120B", linetype = "dashed", linewidth = 1) +
+    labs(
+      title    = "Random Forest — Predicted vs Actual Returns",
+      subtitle = paste0(toupper(horizon_label), " Horizon | Test RMSE: ", round(rf_metrics_list[[h]]$RMSE, 6)),
+      caption  = "Source: Custom Machine Learning Pipeline. Out-of-sample testing on 20% holdout.",
+      x = "Actual Log Return",
+      y = "Predicted Log Return"
+    ) +
+    theme_quant()
+
+  ggsave(
+    here("paper", "figures", paste0("rf_pred_actual_", horizon_label, ".png")),
+    pred_vs_actual_plot,
+    width = 8, height = 6, dpi = 300
+  )
 
   saveRDS(
     final_rf_fit,
-    here("output", "models", paste0("rf_", horizon_label, ".rds"))
+    here("output", "models", paste0("rf_", horizon_label, ".rds")),
   )
-  cat("Model saved: output/models/rf_", horizon_label, ".rds\n", sep = "")
+  cat("Outputs saved for RF", horizon_label, "\n")
 }
 
 rf_metrics <- bind_rows(rf_metrics_list)
@@ -277,11 +315,11 @@ XGBoost is the primary tuned model. We tune five hyperparameters via a 20-point 
 
 | Parameter | Controls |
 |---|---|
-| `learn_rate` | Step size shrinkage; lower values reduce overfitting |
-| `tree_depth` | Maximum tree depth; controls model complexity |
-| `min_n` | Minimum observations to split a node |
-| `loss_reduction` | Minimum loss reduction required to make a split |
-| `sample_size` | Row subsampling ratio per tree (stochastic boosting) |
+| `learn_rate` | Step size shrinkage; prevents overfitting |
+| `tree_depth` | Complexity of individual trees |
+| `min_n` | Minimum observations in a node |
+| `loss_reduction` | Gamma; minimum loss reduction to split |
+| `stop_iter` | Early stopping rounds |
 
 ```{r xgb_models}
 set.seed(RANDOM_SEED)
@@ -318,22 +356,21 @@ for (h in seq_along(TARGET_COLS)) {
     tree_depth     = tune(),
     min_n          = tune(),
     loss_reduction = tune(),
-    sample_size    = tune()
+    stop_iter      = tune()
   ) %>%
-    set_engine("xgboost") %>%
+    set_engine("xgboost", nthread = parallel::detectCores()) %>%
     set_mode("regression")
 
   xgb_wf <- workflow() %>%
     add_recipe(xgb_recipe) %>%
     add_model(xgb_spec)
 
-  # sample_size in boost_tree maps to sample_prop() in dials
   xgb_grid <- grid_latin_hypercube(
-    learn_rate(),
-    tree_depth(),
-    min_n(),
+    learn_rate(range = c(-3, -1)), # 0.001 to 0.1
+    tree_depth(range = c(3L, 8L)),
+    min_n(range      = c(5L, 30L)),
     loss_reduction(),
-    sample_size = sample_prop(),
+    stop_iter(range  = c(10L, 50L)),
     size = XGB_GRID_SIZE
   )
 
@@ -342,7 +379,7 @@ for (h in seq_along(TARGET_COLS)) {
     resamples = cv_h,
     grid      = xgb_grid,
     metrics   = metric_set(rmse, mae, rsq),
-    control   = control_grid(verbose = FALSE, save_pred = FALSE)
+    control   = control_grid(verbose = TRUE, save_pred = FALSE)
   )
 
   best_xgb <- select_best(xgb_tune, metric = "rmse")
@@ -353,51 +390,66 @@ for (h in seq_along(TARGET_COLS)) {
   final_xgb_wf  <- finalize_workflow(xgb_wf, best_xgb)
   final_xgb_fit <- fit(final_xgb_wf, data = train_h)
 
-  xgb_preds   <- predict(final_xgb_fit, new_data = test_h)$.pred
-  naive_preds <- test_df$lag1
+  xgb_preds       <- predict(final_xgb_fit, new_data = test_h)$.pred
+  xgb_train_preds <- predict(final_xgb_fit, new_data = train_h)$.pred
+  naive_preds     <- test_df$lag1
 
   xgb_metrics_list[[h]] <- compute_metrics(
-    actual     = test_h[[target_col]],
-    predicted  = xgb_preds,
-    naive_pred = naive_preds,
-    model      = "XGBoost",
-    horizon    = horizon_label
+    test_actual  = test_h[[target_col]],
+    test_pred    = xgb_preds,
+    train_actual = train_h[[target_col]],
+    train_pred   = xgb_train_preds,
+    naive_pred   = naive_preds,
+    model        = "XGBoost",
+    horizon      = horizon_label
   )
   cat("RMSE:", round(xgb_metrics_list[[h]]$RMSE, 6),
       "| DA:",  round(xgb_metrics_list[[h]]$DA,   4),
       "| Naive DA:", round(xgb_metrics_list[[h]]$Naive_DA, 4), "\n")
 
+  # 1. Feature Importance Plot
   vip_plot <- final_xgb_fit %>%
     extract_fit_parsnip() %>%
-    vip(num_features = 15) +
+    vip(num_features = 15, aesthetics = list(fill = "#141F52", alpha = 0.9)) +
     labs(
       title    = "XGBoost — Feature Importance (Top 15)",
-      subtitle = paste0(
-        toupper(horizon_label), " Horizon | ",
-        "Test RMSE: ", round(xgb_metrics_list[[h]]$RMSE, 6)
-      ),
+      subtitle = paste0(toupper(horizon_label), " Horizon | Test RMSE: ", round(xgb_metrics_list[[h]]$RMSE, 6)),
+      caption  = "Source: Custom Machine Learning Pipeline. Out-of-sample testing on 20% holdout.",
       x = "Importance (Gain)",
       y = NULL
     ) +
-    theme_minimal(base_size = 12) +
-    theme(
-      plot.title         = element_text(face = "bold"),
-      plot.subtitle      = element_text(color = "#595959"),
-      panel.grid.major.y = element_blank()
-    )
+    theme_quant()
 
   ggsave(
     here("paper", "figures", paste0("xgboost_importance_", horizon_label, ".png")),
     vip_plot,
     width = 8, height = 6, dpi = 300
   )
-  cat("Importance plot saved: paper/figures/xgboost_importance_", horizon_label, ".png\n", sep = "")
+  
+  # 2. Predicted vs Actual Plot
+  pred_vs_actual_plot <- ggplot(tibble(Actual = test_h[[target_col]], Predicted = xgb_preds), aes(x = Actual, y = Predicted)) +
+    geom_point(color = "#141F52", alpha = 0.6) +
+    geom_abline(intercept = 0, slope = 1, color = "#E3120B", linetype = "dashed", linewidth = 1) +
+    labs(
+      title    = "XGBoost — Predicted vs Actual Returns",
+      subtitle = paste0(toupper(horizon_label), " Horizon | Test RMSE: ", round(xgb_metrics_list[[h]]$RMSE, 6)),
+      caption  = "Source: Custom Machine Learning Pipeline. Out-of-sample testing on 20% holdout.",
+      x = "Actual Log Return",
+      y = "Predicted Log Return"
+    ) +
+    theme_quant()
+
+  ggsave(
+    here("paper", "figures", paste0("xgboost_pred_actual_", horizon_label, ".png")),
+    pred_vs_actual_plot,
+    width = 8, height = 6, dpi = 300
+  )
 
   saveRDS(
     final_xgb_fit,
-    here("output", "models", paste0("xgboost_", horizon_label, ".rds"))
+    here("output", "models", paste0("xgboost_", horizon_label, ".rds")),
   )
-  cat("Model saved: output/models/xgboost_", horizon_label, ".rds\n", sep = "")
+  cat("Outputs saved for XGBoost", horizon_label, "\n")
 }
 
 xgb_metrics <- bind_rows(xgb_metrics_list)
@@ -414,7 +466,7 @@ all_metrics <- bind_rows(rf_metrics, xgb_metrics) %>%
 kable(
   all_metrics,
   caption   = "Random Forest and XGBoost: Out-of-Sample Performance by Horizon",
-  col.names = c("Model", "Horizon", "RMSE", "MAE", "R2", "DA", "Naive DA"),
+  col.names = c("Model", "Horizon", "RMSE", "MAE", "R2", "DA", "Naive DA", "Train RMSE", "Train MAE", "Train R2", "Train DA"),
   digits    = 5
 ) %>%
   kable_styling(bootstrap_options = c("striped", "condensed"), full_width = FALSE)
@@ -438,7 +490,7 @@ latex_tbl <- kable(
   linesep   = "",
   caption   = "Random Forest and XGBoost: Out-of-Sample Performance by Horizon",
   label     = "rf_xgboost_metrics",
-  col.names = c("Model", "Horizon", "RMSE", "MAE", "R2", "DA", "Naive DA"),
+  col.names = c("Model", "Horizon", "RMSE", "MAE", "R2", "DA", "Naive DA", "Train RMSE", "Train MAE", "Train R2", "Train DA"),
   digits    = 5
 ) %>%
   kable_styling(latex_options = c("hold_position", "scale_down")) %>%
@@ -455,7 +507,8 @@ latex_tbl <- kable(
   )
 
 writeLines(
-  as.character(latex_tbl),
+  as.character(latex_tbl) %>%
+    str_replace_all("\\\\multicolumn\\{11\\}\\{l\\}", "\\\\multicolumn{11}{p{\\\\linewidth}}"),
   here("paper", "tables", "rf_xgboost_metrics.tex")
 )
 message("LaTeX table saved to paper/tables/rf_xgboost_metrics.tex")
