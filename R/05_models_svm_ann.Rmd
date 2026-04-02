@@ -116,19 +116,42 @@ cat("Test set                :", n_test,
 ## 4. Metrics Helper
 
 ```{r metrics_fn}
-compute_metrics <- function(actual, predicted, naive_pred, model, horizon) {
-  ss_res   <- sum((actual - predicted)^2)
-  ss_total <- sum((actual - mean(actual))^2)
+compute_metrics <- function(test_actual, test_pred, train_actual, train_pred, naive_pred, model, horizon) {
+  test_ss_res   <- sum((test_actual - test_pred)^2)
+  test_ss_total <- sum((test_actual - mean(test_actual))^2)
+  train_ss_res  <- sum((train_actual - train_pred)^2)
+  train_ss_total <- sum((train_actual - mean(train_actual))^2)
 
   tibble(
-    Model    = model,
-    Horizon  = horizon,
-    RMSE     = sqrt(mean((actual - predicted)^2)),
-    MAE      = mean(abs(actual - predicted)),
-    R2       = 1 - ss_res / ss_total,   # can be negative out-of-sample
-    DA       = mean(sign(predicted) == sign(actual)),
-    Naive_DA = mean(sign(naive_pred) == sign(actual))
+    Model      = model,
+    Horizon    = horizon,
+    RMSE       = sqrt(mean((test_actual - test_pred)^2)),
+    MAE        = mean(abs(test_actual - test_pred)),
+    R2         = 1 - test_ss_res / test_ss_total,
+    DA         = mean(sign(test_pred) == sign(test_actual)),
+    Naive_DA   = mean(sign(naive_pred) == sign(test_actual)),
+    Train_RMSE = sqrt(mean((train_actual - train_pred)^2)),
+    Train_MAE  = mean(abs(train_actual - train_pred)),
+    Train_R2   = 1 - train_ss_res / train_ss_total,
+    Train_DA   = mean(sign(train_pred) == sign(train_actual))
   )
+}
+
+# QVRS Economist Theme
+theme_quant <- function() {
+  theme_minimal() +
+    theme(
+      text = element_text(color = "#0D0D0D"), 
+      plot.title = element_text(face = "bold", size = 14, margin = margin(b = 5)),
+      plot.subtitle = element_text(size = 11, color = "#333333", margin = margin(b = 10)),
+      plot.caption = element_text(size = 8, color = "#595959", hjust = 0, margin = margin(t = 10)),
+      axis.title = element_text(size = 10, face = "bold"),
+      axis.text = element_text(size = 9),
+      panel.grid.minor = element_blank(),
+      panel.grid.major = element_line(color = "#F2F2F2", linewidth = 0.3),
+      legend.position = "bottom",
+      axis.ticks = element_blank()
+    )
 }
 ```
 
@@ -199,7 +222,7 @@ for (h in seq_along(TARGET_COLS)) {
     resamples = cv_h,
     grid      = svm_grid,
     metrics   = metric_set(rmse, mae, rsq),
-    control   = control_grid(verbose = FALSE, save_pred = FALSE)
+    control   = control_grid(verbose = TRUE, save_pred = FALSE)
   )
 
   best_svm <- select_best(svm_tune, metric = "rmse")
@@ -209,19 +232,41 @@ for (h in seq_along(TARGET_COLS)) {
   final_svm_wf  <- finalize_workflow(svm_wf, best_svm)
   final_svm_fit <- fit(final_svm_wf, data = train_h)
 
-  svm_preds   <- predict(final_svm_fit, new_data = test_h)$.pred
-  naive_preds <- test_df$lag1
+  svm_preds       <- predict(final_svm_fit, new_data = test_h)$.pred
+  svm_train_preds <- predict(final_svm_fit, new_data = train_h)$.pred
+  naive_preds     <- test_df$lag1
 
   svm_metrics_list[[h]] <- compute_metrics(
-    actual     = test_h[[target_col]],
-    predicted  = svm_preds,
-    naive_pred = naive_preds,
-    model      = "SVM",
-    horizon    = horizon_label
+    test_actual  = test_h[[target_col]],
+    test_pred    = svm_preds,
+    train_actual = train_h[[target_col]],
+    train_pred   = svm_train_preds,
+    naive_pred   = naive_preds,
+    model        = "SVM",
+    horizon      = horizon_label
   )
   cat("RMSE:", round(svm_metrics_list[[h]]$RMSE, 6),
       "| DA:",  round(svm_metrics_list[[h]]$DA,   4),
       "| Naive DA:", round(svm_metrics_list[[h]]$Naive_DA, 4), "\n")
+
+  pred_vs_actual_plot <- ggplot(tibble(Actual = test_h[[target_col]], Predicted = svm_preds), aes(x = Actual, y = Predicted)) +
+    geom_point(color = "#141F52", alpha = 0.6) +
+    geom_abline(intercept = 0, slope = 1, color = "#E3120B", linetype = "dashed", linewidth = 1) +
+    labs(
+      title    = "SVM — Predicted vs Actual Returns",
+      subtitle = paste0(toupper(horizon_label), " Horizon | Test RMSE: ", round(svm_metrics_list[[h]]$RMSE, 6)),
+      caption  = "Source: Custom Machine Learning Pipeline. Out-of-sample testing on 20% holdout.",
+      x = "Actual Log Return",
+      y = "Predicted Log Return"
+    ) +
+    theme_quant()
+
+  ggsave(
+    here("paper", "figures", paste0("svm_pred_actual_", horizon_label, ".png")),
+    pred_vs_actual_plot,
+    width = 8, height = 6, dpi = 300
+  )
+  cat("Scatter plot saved: paper/figures/svm_pred_actual_", horizon_label, ".png\n", sep = "")
 
   saveRDS(
     final_svm_fit,
@@ -302,7 +347,7 @@ for (h in seq_along(TARGET_COLS)) {
     resamples = cv_h,
     grid      = ann_grid,
     metrics   = metric_set(rmse, mae, rsq),
-    control   = control_grid(verbose = FALSE, save_pred = FALSE)
+    control   = control_grid(verbose = TRUE, save_pred = FALSE)
   )
 
   best_ann <- select_best(ann_tune, metric = "rmse")
@@ -312,19 +357,41 @@ for (h in seq_along(TARGET_COLS)) {
   final_ann_wf  <- finalize_workflow(ann_wf, best_ann)
   final_ann_fit <- fit(final_ann_wf, data = train_h)
 
-  ann_preds   <- predict(final_ann_fit, new_data = test_h)$.pred
-  naive_preds <- test_df$lag1
+  ann_preds       <- predict(final_ann_fit, new_data = test_h)$.pred
+  ann_train_preds <- predict(final_ann_fit, new_data = train_h)$.pred
+  naive_preds     <- test_df$lag1
 
   ann_metrics_list[[h]] <- compute_metrics(
-    actual     = test_h[[target_col]],
-    predicted  = ann_preds,
-    naive_pred = naive_preds,
-    model      = "ANN",
-    horizon    = horizon_label
+    test_actual  = test_h[[target_col]],
+    test_pred    = ann_preds,
+    train_actual = train_h[[target_col]],
+    train_pred   = ann_train_preds,
+    naive_pred   = naive_preds,
+    model        = "ANN",
+    horizon      = horizon_label
   )
   cat("RMSE:", round(ann_metrics_list[[h]]$RMSE, 6),
       "| DA:",  round(ann_metrics_list[[h]]$DA,   4),
       "| Naive DA:", round(ann_metrics_list[[h]]$Naive_DA, 4), "\n")
+
+  pred_vs_actual_plot <- ggplot(tibble(Actual = test_h[[target_col]], Predicted = ann_preds), aes(x = Actual, y = Predicted)) +
+    geom_point(color = "#141F52", alpha = 0.6) +
+    geom_abline(intercept = 0, slope = 1, color = "#E3120B", linetype = "dashed", linewidth = 1) +
+    labs(
+      title    = "ANN — Predicted vs Actual Returns",
+      subtitle = paste0(toupper(horizon_label), " Horizon | Test RMSE: ", round(ann_metrics_list[[h]]$RMSE, 6)),
+      caption  = "Source: Custom Machine Learning Pipeline. Out-of-sample testing on 20% holdout.",
+      x = "Actual Log Return",
+      y = "Predicted Log Return"
+    ) +
+    theme_quant()
+
+  ggsave(
+    here("paper", "figures", paste0("ann_pred_actual_", horizon_label, ".png")),
+    pred_vs_actual_plot,
+    width = 8, height = 6, dpi = 300
+  )
+  cat("Scatter plot saved: paper/figures/ann_pred_actual_", horizon_label, ".png\n", sep = "")
 
   saveRDS(
     final_ann_fit,
@@ -347,7 +414,7 @@ all_metrics <- bind_rows(svm_metrics, ann_metrics) %>%
 kable(
   all_metrics,
   caption   = "SVM and ANN: Out-of-Sample Performance by Horizon",
-  col.names = c("Model", "Horizon", "RMSE", "MAE", "R2", "DA", "Naive DA"),
+  col.names = c("Model", "Horizon", "RMSE", "MAE", "R2", "DA", "Naive DA", "Train RMSE", "Train MAE", "Train R2", "Train DA"),
   digits    = 5
 ) %>%
   kable_styling(bootstrap_options = c("striped", "condensed"), full_width = FALSE)
@@ -371,7 +438,7 @@ latex_tbl <- kable(
   linesep   = "",
   caption   = "SVM and ANN: Out-of-Sample Performance by Horizon",
   label     = "svm_ann_metrics",
-  col.names = c("Model", "Horizon", "RMSE", "MAE", "R2", "DA", "Naive DA"),
+  col.names = c("Model", "Horizon", "RMSE", "MAE", "R2", "DA", "Naive DA", "Train RMSE", "Train MAE", "Train R2", "Train DA"),
   digits    = 5
 ) %>%
   kable_styling(latex_options = c("hold_position", "scale_down")) %>%
@@ -390,7 +457,8 @@ latex_tbl <- kable(
   )
 
 writeLines(
-  as.character(latex_tbl),
+  as.character(latex_tbl) %>%
+    str_replace_all("\\\\multicolumn\\{11\\}\\{l\\}", "\\\\multicolumn{11}{p{\\\\linewidth}}"),
   here("paper", "tables", "svm_ann_metrics.tex")
 )
 message("LaTeX table saved to paper/tables/svm_ann_metrics.tex")

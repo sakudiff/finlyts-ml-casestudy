@@ -3,17 +3,17 @@
 \caption{\label{tab:rf_xgboost_metrics}Random Forest and XGBoost: Out-of-Sample Performance by Horizon}
 \centering
 \resizebox{\ifdim\width>\linewidth\linewidth\else\width\fi}{!}{
-\begin{tabular}[t]{llrrrrr}
+\begin{tabular}[t]{llrrrrrrrrr}
 \toprule
-Model & Horizon & RMSE & MAE & R2 & DA & Naive DA\\
+Model & Horizon & RMSE & MAE & R2 & DA & Naive DA & Train RMSE & Train MAE & Train R2 & Train DA\\
 \midrule
-Random Forest & 1d & 0.01962 & 0.01444 & -0.01379 & 0.43666 & 0.42857\\
-Random Forest & 3d & 0.03026 & 0.02384 & -0.07615 & 0.47978 & 0.41509\\
-Random Forest & 5d & 0.03784 & 0.02957 & -0.12996 & 0.45822 & 0.42857\\
-XGBoost & 1d & 0.01945 & 0.01378 & 0.00397 & 0.42318 & 0.42857\\
-XGBoost & 3d & 0.02940 & 0.02269 & -0.01557 & 0.47709 & 0.41509\\
-XGBoost & 5d & 0.03616 & 0.02807 & -0.03154 & 0.44744 & 0.42857\\
+Random Forest & 1d & 0.01962 & 0.01444 & -0.01379 & 0.43666 & 0.42857 & 0.01032 & 0.00709 & 0.71530 & 0.83198\\
+Random Forest & 3d & 0.03007 & 0.02362 & -0.06250 & 0.47439 & 0.41509 & 0.01881 & 0.01374 & 0.61659 & 0.86437\\
+Random Forest & 5d & 0.03791 & 0.02959 & -0.13427 & 0.47170 & 0.42857 & 0.01741 & 0.01265 & 0.78354 & 0.91296\\
+XGBoost & 1d & 0.01942 & 0.01379 & 0.00759 & 0.40431 & 0.42857 & 0.01875 & 0.01302 & 0.05931 & 0.51754\\
+XGBoost & 3d & 0.02924 & 0.02255 & -0.00499 & 0.45822 & 0.41509 & 0.02902 & 0.02098 & 0.08794 & 0.52429\\
+XGBoost & 5d & 0.03618 & 0.02818 & -0.03306 & 0.46361 & 0.42857 & 0.03253 & 0.02390 & 0.24441 & 0.69096\\
 \bottomrule
-\multicolumn{7}{l}{\rule{0pt}{1em}\textit{Note.} DA = Directional Accuracy (fraction of test-set observations where the predicted sign matches the realised sign). Naive DA uses the previous day's return (lag1) as the prediction. R2 is out-of-sample and may be negative if the model performs worse than the mean.}\\
+\multicolumn{11}{p{\linewidth}}{\rule{0pt}{1em}\textit{Note.} DA = Directional Accuracy (fraction of test-set observations where the predicted sign matches the realised sign). Naive DA uses the previous day's return (lag1) as the prediction. R2 is out-of-sample and may be negative if the model performs worse than the mean.}\\
 \end{tabular}}
 \end{table}
