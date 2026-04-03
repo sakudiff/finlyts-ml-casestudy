@@ -139,29 +139,6 @@ cat("Observations after NA removal:", nrow(features), "\n")
 cat("Rows dropped (initialization + lead window):", nrow(df) - nrow(features), "\n")
 ```
 
-```{r finalize-features}
-feature_cols <- c(
-  "date",
-  # Targets — labels only, never predictors
-  "target_1d", "target_3d", "target_5d",
-  # Contemporaneous returns
-  "r_bpi", "r_bdo", "r_psei", "r_fx", "r_us10y",
-  # Trend
-  "ma5", "ma10", "ma20", "ema12", "ema26", "ma_ratio",
-  # Momentum
-  "lag1", "lag2", "lag3", "mom5", "mom10", "rsi14", "macd", "macd_signal",
-  # Volatility
-  "vol5", "vol10", "vol20", "vol_ratio",
-  # Cross-asset
-  "lag_psei",
-  # Transformations
-  "interact", "vol5_sq"
-  # hi_vol added after split (§8) to prevent threshold leakage
-)
-
-features <- df |>
-  select(all_of(feature_cols)) |>
-  filter(complete.cases(pick(everything())))
 
 cat("Observations after NA removal:", nrow(features), "\n")
 cat("Rows dropped (initialization + lead window):", nrow(df) - nrow(features), "\n")
