@@ -23,17 +23,22 @@ knitr::opts_chunk$set(echo = TRUE)
 # 2. Multicollinearity: The feature set includes both 'ma_ratio' and raw MAs (ma5, ma10, ma20). OLS will suffer from high VIF. Conduct a VIF check and consider dropping the raw MAs in favor of the ratio for the linear baseline.
 
 ```{r main}
-library(tidymodels)
+library(tidyquant)     # SMA, EMA, RSI, MACD, runSD via TTR
 library(tidyverse)
-library(tidyquant)
-library(broom)
+library(car)           # vif()
+library(broom)         # tidy(), glance()
+library(knitr)         # kable()
+library(kableExtra)
 ```
 
 ```{r data}
-master_file <- read.csv("data/processed/master_series.csv", stringsAsfactors = "FALSE") 
+master_file <- read.csv("data/processed/master_series.csv", stringsAsfactors = "FALSE")
+cat("Rows:", nrow(master), "| Columns:", ncol(master), "\n")
+cat("Date range:", format(min(master$date), "%Y-%m-%d"),
+    "to", format(max(master$date), "%Y-%m-%d"), "\n")
 ```
 
-```{r log returns}
+```{r log_returns}
 df <- master |>
   mutate(
     r_bpi   <- log(bpi_price   / lag(bpi_price)),   # target asset
@@ -44,13 +49,42 @@ df <- master |>
   )
 ```
 
-```{r split}
-set.seed(42)
-# Strict time-series split: first 80% = training, last 20% = test
-n_total <- nrow(features)
-n_train  <- floor(0.80 * n_total)
-n_test   <- n_total - n_train
+```{r targets}
+df <- df |> mutate (target_1d = lead(r_bpi, 1), 
+        target_3d = lead(r_bpi, 1) + lead(r_bpi, 2) + lead(r_bpi, 3), 
+        target_5d = lead(r_bpi, 1) + lead(r_bpi, 2) + lead(r_bpi, 3) +
+                lead(r_bpi, 4) + lead(r_bpi, 5) 
+```
 
+```{r trend}
+df <- df |>
+  mutate(
+    ma5      = SMA(bpi_price, n = 5),
+    ma10     = SMA(bpi_price, n = 10),
+    ma20     = SMA(bpi_price, n = 20),
+    ema12    = EMA(bpi_price, n = 12),
+    ema26    = EMA(bpi_price, n = 26),
+    ma_ratio = ma5 / ma20          # short-run vs long-run trend divergence
+  )
+```
+
+```{r momentum}
+df <- df |>
+  mutate(
+    lag1  = lag(r_bpi, 1),
+    lag2  = lag(r_bpi, 2),
+    lag3  = lag(r_bpi, 3),
+    mom5  = r_bpi - lag(r_bpi, 5),
+    mom10 = r_bpi - lag(r_bpi, 10)
+  ) |>
+  mutate(rsi14 = RSI(bpi_price, n = 14))
+
+macd_matrix <- MACD(df$bpi_price, nFast = 12, nSlow = 26, nSig = 9, maType = "EMA")
+df <- df |>
+  mutate(
+    macd        = as.numeric(macd_matrix[, "macd"]),
+    macd_signal = as.numeric(macd_matrix[, "signal"])
+  )
 ```
 
 
