@@ -25,6 +25,34 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r main}
 library(tidymodels)
 library(tidyverse)
+library(tidyquant)
+library(broom)
+
+```{r data}
+master_file <- read.csv("data/processed/master_series.csv", stringsAsfactors = "FALSE") 
+```
+
+```{r log returns}
+df <- master |>
+  mutate(
+    r_bpi   <- log(bpi_price   / lag(bpi_price)),   # target asset
+    r_bdo   <- log(bdo_price   / lag(bdo_price)),   # sector competitor
+    r_psei  <- log(psei_price  / lag(psei_price)),  # market index
+    r_fx    <- log(fx_price    / lag(fx_price)),    # USD/PHP macro
+    r_us10y <- log(us10y_price / lag(us10y_price))  # US 10Y macro
+  )
+```
+
+```{r split}
+set.seed(42)
+# Strict time-series split: first 80% = training, last 20% = test
+n_total <- nrow(features)
+n_train  <- floor(0.80 * n_total)
+n_test   <- n_total - n_train
+
+```
+
+
 
 message("03_ols_baseline.R: Not yet implemented.")
 ```
