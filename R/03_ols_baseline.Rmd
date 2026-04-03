@@ -22,6 +22,7 @@ knitr::opts_chunk$set(echo = TRUE)
 # 1. Split Consistency: Use the same 80/20 chronological split defined in Section 10 of 02_feature_engineering.Rmd (cutoff ~April 2024) to ensure model comparability.
 # 2. Multicollinearity: The feature set includes both 'ma_ratio' and raw MAs (ma5, ma10, ma20). OLS will suffer from high VIF. Conduct a VIF check and consider dropping the raw MAs in favor of the ratio for the linear baseline.
 
+## Packages
 ```{r main}
 library(tidyquant)     # SMA, EMA, RSI, MACD, runSD via TTR
 library(tidyverse)
@@ -30,14 +31,14 @@ library(broom)         # tidy(), glance()
 library(knitr)         # kable()
 library(kableExtra)
 ```
-
+## Data
 ```{r data}
 master_file <- read.csv("data/processed/master_series.csv", stringsAsfactors = "FALSE")
 cat("Rows:", nrow(master), "| Columns:", ncol(master), "\n")
 cat("Date range:", format(min(master$date), "%Y-%m-%d"),
     "to", format(max(master$date), "%Y-%m-%d"), "\n")
 ```
-
+## Log Returns
 ```{r log_returns}
 df <- master |>
   mutate(
@@ -49,6 +50,7 @@ df <- master |>
   )
 ```
 
+## Target Variables
 ```{r targets}
 df <- df |> mutate (target_1d = lead(r_bpi, 1), 
         target_3d = lead(r_bpi, 1) + lead(r_bpi, 2) + lead(r_bpi, 3), 
@@ -56,6 +58,7 @@ df <- df |> mutate (target_1d = lead(r_bpi, 1),
                 lead(r_bpi, 4) + lead(r_bpi, 5) 
 ```
 
+## Technical Indicators
 ```{r trend}
 df <- df |>
   mutate(
@@ -68,6 +71,7 @@ df <- df |>
   )
 ```
 
+## Momentum
 ```{r momentum}
 df <- df |>
   mutate(
@@ -87,7 +91,79 @@ df <- df |>
   )
 ```
 
-
-
-message("03_ols_baseline.R: Not yet implemented.")
+## Volatility
+```{r volatility}
+df <- df |>
+  mutate(
+    vol5      = runSD(r_bpi, n = 5,  sample = TRUE),
+    vol10     = runSD(r_bpi, n = 10, sample = TRUE),
+    vol20     = runSD(r_bpi, n = 20, sample = TRUE),  # also used for regime
+    vol_ratio = vol5 / vol10
+  )
 ```
+## Cross Asset Transformations
+```{r cross_asset_transforms}
+df <- df |>
+  mutate(
+    lag_psei = lag(r_psei, 1),    # 1-day lagged PSEi return
+    interact = lag1 * vol5,       # momentum × volatility interaction
+    vol5_sq  = vol5^2             # nonlinear volatility effect
+  )
+```
+
+```{r finalize-features}
+feature_cols <- c(
+  "date",
+  # Targets — labels only, never predictors
+  "target_1d", "target_3d", "target_5d",
+  # Contemporaneous returns
+  "r_bpi", "r_bdo", "r_psei", "r_fx", "r_us10y",
+  # Trend
+  "ma5", "ma10", "ma20", "ema12", "ema26", "ma_ratio",
+  # Momentum
+  "lag1", "lag2", "lag3", "mom5", "mom10", "rsi14", "macd", "macd_signal",
+  # Volatility
+  "vol5", "vol10", "vol20", "vol_ratio",
+  # Cross-asset
+  "lag_psei",
+  # Transformations
+  "interact", "vol5_sq"
+  # hi_vol added after split (§8) to prevent threshold leakage
+)
+
+features <- df |>
+  select(all_of(feature_cols)) |>
+  filter(complete.cases(pick(everything())))
+
+cat("Observations after NA removal:", nrow(features), "\n")
+cat("Rows dropped (initialization + lead window):", nrow(df) - nrow(features), "\n")
+```
+
+```{r finalize-features}
+feature_cols <- c(
+  "date",
+  # Targets — labels only, never predictors
+  "target_1d", "target_3d", "target_5d",
+  # Contemporaneous returns
+  "r_bpi", "r_bdo", "r_psei", "r_fx", "r_us10y",
+  # Trend
+  "ma5", "ma10", "ma20", "ema12", "ema26", "ma_ratio",
+  # Momentum
+  "lag1", "lag2", "lag3", "mom5", "mom10", "rsi14", "macd", "macd_signal",
+  # Volatility
+  "vol5", "vol10", "vol20", "vol_ratio",
+  # Cross-asset
+  "lag_psei",
+  # Transformations
+  "interact", "vol5_sq"
+  # hi_vol added after split (§8) to prevent threshold leakage
+)
+
+features <- df |>
+  select(all_of(feature_cols)) |>
+  filter(complete.cases(pick(everything())))
+
+cat("Observations after NA removal:", nrow(features), "\n")
+cat("Rows dropped (initialization + lead window):", nrow(df) - nrow(features), "\n")
+```
+
