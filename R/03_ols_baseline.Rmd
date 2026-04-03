@@ -27,6 +27,7 @@ library(tidymodels)
 library(tidyverse)
 library(tidyquant)
 library(broom)
+```
 
 ```{r data}
 master_file <- read.csv("data/processed/master_series.csv", stringsAsfactors = "FALSE") 
