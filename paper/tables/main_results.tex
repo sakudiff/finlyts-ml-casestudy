@@ -1,0 +1,23 @@
+\begin{table}[!ht]
+\centering
+\begin{threeparttable}
+\caption{Summary of Out-of-Sample RMSE and Directional Accuracy}
+\label{tab:main_results}
+
+\begin{tabular}{lrrrrrr}
+\toprule
+Model & RMSE 1d & DA 1d & RMSE 3d & DA 3d & RMSE 5d & DA 5d\\
+\midrule
+OLS & 0.01655 & 0.3314 & 0.02660 & 0.4904 & 0.03333 & 0.5115\\
+Random Forest & 0.01962 & 0.4367 & 0.03007 & 0.4744 & 0.03791 & 0.4717\\
+XGBoost & 0.01942 & 0.4043 & 0.02924 & 0.4582 & 0.03618 & 0.4636\\
+SVM & 0.01647 & 0.3276 & 0.02634 & 0.4885 & 0.03271 & 0.4904\\
+ANN & 0.01641 & 0.3582 & 0.02647 & 0.4751 & 0.03291 & 0.4923\\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}
+\footnotesize
+\item \textit{Note.} RMSE = Root Mean Squared Error. DA = Directional Accuracy. Negative R-squared values indicate the model performs worse than predicting the mean return.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}

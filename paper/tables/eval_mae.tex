@@ -1,0 +1,23 @@
+\begin{table}[!ht]
+\centering
+\begin{threeparttable}
+\caption{Out-of-Sample MAE by Model and Prediction Horizon}
+\label{tab:eval_mae}
+
+\begin{tabular}{lrrr}
+\toprule
+Model & 1-Day & 3-Day & 5-Day\\
+\midrule
+OLS & 0.01052 & 0.01979 & 0.02562\\
+Random Forest & 0.01444 & 0.02362 & 0.02959\\
+XGBoost & 0.01379 & 0.02255 & 0.02818\\
+SVM & 0.01011 & 0.01931 & 0.02507\\
+ANN & 0.01004 & 0.01959 & 0.02522\\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}
+\footnotesize
+\item \textit{Note.} Mean Absolute Error. Lower values indicate better predictive accuracy. MAE is less sensitive to outlier predictions than RMSE.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}

@@ -385,25 +385,28 @@ latex_table <- kable(
   caption   = "Descriptive Statistics: Target Variables and Key Features (2019--2026)",
   label     = "descriptive_stats",
   col.names = c("Variable", "Mean", "SD", "Min", "Max", "Skewness", "Ex. Kurtosis")
-) %>%
-  kable_styling(latex_options = c("hold_position", "scale_down")) %>%
-  footnote(
-    general           = paste0(
-      "Sample: January 2, 2019 to April 1, 2026 (", nrow(features),
-      " observations after initialization window removal). ",
-      "Ex.\\ Kurtosis is excess kurtosis (0 for normal distribution). ",
-      "All returns are daily log returns."
-    ),
-    general_title     = "\\\\textit{Note.}",
-    footnote_as_chunk = TRUE,
-    escape            = FALSE
-  )
-
-writeLines(
-  as.character(latex_table) %>%
-    str_replace_all("\\\\multicolumn\\{7\\}\\{l\\}", "\\\\multicolumn{7}{p{\\\\linewidth}}"),
-  here("paper", "tables", "descriptive_stats.tex")
 )
+
+# Build threeparttable manually: footnote outside table sizing
+desc_note <- paste0(
+  "Sample: January 2, 2019 to April 1, 2026 (", nrow(features),
+  " observations after initialization window removal). ",
+  "Ex. Kurtosis is excess kurtosis (0 for normal distribution). ",
+  "All returns are daily log returns."
+)
+
+latex_table <- paste0(
+  "\\begin{table}[!ht]\n\\centering\n",
+  "\\begin{threeparttable}\n",
+  as.character(latex_table), "\n",
+  "\\begin{tablenotes}\n\\footnotesize\n",
+  "\\item \\textit{Note.} ", desc_note, "\n",
+  "\\end{tablenotes}\n",
+  "\\end{threeparttable}\n",
+  "\\end{table}"
+)
+
+writeLines(latex_table, here("paper", "tables", "descriptive_stats.tex"))
 message("02_feature_engineering.Rmd: LaTeX table saved to paper/tables/descriptive_stats.tex")
 
 ```

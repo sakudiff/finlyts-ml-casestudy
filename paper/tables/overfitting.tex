@@ -1,0 +1,33 @@
+\begin{table}[!ht]
+\centering
+\begin{threeparttable}
+\caption{Overfitting Diagnostic: Train versus Test RMSE}
+\label{tab:overfitting}
+
+\begin{tabular}{llrrr}
+\toprule
+Model & Horizon & Train RMSE & Test RMSE & Gap\\
+\midrule
+OLS & 1d & 0.01606 & 0.01655 & -0.00048\\
+OLS & 3d & 0.02545 & 0.02660 & -0.00114\\
+OLS & 5d & 0.03168 & 0.03333 & -0.00165\\
+Random Forest & 1d & 0.01032 & 0.01962 & -0.00930\\
+Random Forest & 3d & 0.01881 & 0.03007 & -0.01126\\
+Random Forest & 5d & 0.01741 & 0.03791 & -0.02050\\
+XGBoost & 1d & 0.01875 & 0.01942 & -0.00067\\
+XGBoost & 3d & 0.02902 & 0.02924 & -0.00022\\
+XGBoost & 5d & 0.03253 & 0.03618 & -0.00365\\
+SVM & 1d & 0.01612 & 0.01647 & -0.00035\\
+SVM & 3d & 0.02585 & 0.02634 & -0.00049\\
+SVM & 5d & 0.03249 & 0.03271 & -0.00022\\
+ANN & 1d & 0.01618 & 0.01641 & -0.00023\\
+ANN & 3d & 0.02564 & 0.02647 & -0.00083\\
+ANN & 5d & 0.03206 & 0.03291 & -0.00085\\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}
+\footnotesize
+\item \textit{Note.} Gap = Train RMSE minus Test RMSE. Positive values indicate the model fits training data more closely than it generalises to unseen observations. Large gaps relative to test RMSE suggest overfitting.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}

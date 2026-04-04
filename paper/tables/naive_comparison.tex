@@ -1,0 +1,33 @@
+\begin{table}[!ht]
+\centering
+\begin{threeparttable}
+\caption{Directional Accuracy versus Naive Benchmark}
+\label{tab:naive_comparison}
+
+\begin{tabular}{llrrlr}
+\toprule
+Model & Horizon & DA & Naive DA & Beats Naive & DA Difference\\
+\midrule
+OLS & 1d & 0.3314176 & 0.2662835 & Yes & 0.0651\\
+OLS & 3d & 0.4904215 & 0.3160920 & Yes & 0.1743\\
+OLS & 5d & 0.5114943 & 0.2969349 & Yes & 0.2146\\
+Random Forest & 1d & 0.4366600 & 0.4285700 & Yes & 0.0081\\
+Random Forest & 3d & 0.4743900 & 0.4150900 & Yes & 0.0593\\
+Random Forest & 5d & 0.4717000 & 0.4285700 & Yes & 0.0431\\
+XGBoost & 1d & 0.4043100 & 0.4285700 & No & -0.0243\\
+XGBoost & 3d & 0.4582200 & 0.4150900 & Yes & 0.0431\\
+XGBoost & 5d & 0.4636100 & 0.4285700 & Yes & 0.0350\\
+SVM & 1d & 0.3275900 & 0.2662800 & Yes & 0.0613\\
+SVM & 3d & 0.4885100 & 0.3160900 & Yes & 0.1724\\
+SVM & 5d & 0.4904200 & 0.2969300 & Yes & 0.1935\\
+ANN & 1d & 0.3582400 & 0.2662800 & Yes & 0.0920\\
+ANN & 3d & 0.4751000 & 0.3160900 & Yes & 0.1590\\
+ANN & 5d & 0.4923400 & 0.2969300 & Yes & 0.1954\\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}
+\footnotesize
+\item \textit{Note.} DA Difference = Model DA minus Naive DA. Positive values indicate the model outperforms the naive benchmark. The naive benchmark uses the previous day BPI log return (lag1) as the prediction.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}

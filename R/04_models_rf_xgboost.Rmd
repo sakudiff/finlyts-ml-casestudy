@@ -488,29 +488,52 @@ latex_tbl <- kable(
   booktabs  = TRUE,
   escape    = TRUE,
   linesep   = "",
-  caption   = "Random Forest and XGBoost: Out-of-Sample Performance by Horizon",
-  label     = "rf_xgboost_metrics",
   col.names = c("Model", "Horizon", "RMSE", "MAE", "R2", "DA", "Naive DA", "Train RMSE", "Train MAE", "Train R2", "Train DA"),
   digits    = 5
-) %>%
-  kable_styling(latex_options = c("hold_position", "scale_down")) %>%
-  footnote(
-    general           = paste0(
-      "DA = Directional Accuracy (fraction of test-set observations where the ",
-      "predicted sign matches the realised sign). ",
-      "Naive DA uses the previous day's return (lag1) as the prediction. ",
-      "R2 is out-of-sample and may be negative if the model performs worse than the mean."
-    ),
-    general_title     = "Note.",
-    footnote_as_chunk = TRUE,
-    escape            = TRUE
-  )
-
-writeLines(
-  as.character(latex_tbl) %>%
-    str_replace_all("\\\\multicolumn\\{11\\}\\{l\\}", "\\\\multicolumn{11}{p{\\\\linewidth}}"),
-  here("paper", "tables", "rf_xgboost_metrics.tex")
 )
+
+# Build threeparttable manually: footnote outside table sizing
+rf_xgb_note <- paste0(
+  "DA = Directional Accuracy (fraction of test-set observations where the ",
+  "predicted sign matches the realised sign). ",
+  "Naive DA uses the previous day's return (lag1) as the prediction. ",
+  "R2 is out-of-sample and may be negative if the model performs worse than the mean."
+)
+
+latex_tbl <- kable(
+  all_metrics,
+  format    = "latex",
+  booktabs  = TRUE,
+  escape    = TRUE,
+  linesep   = "",
+  col.names = c("Model", "Horizon", "RMSE", "MAE", "R2", "DA", "Naive DA", "Train RMSE", "Train MAE", "Train R2", "Train DA"),
+  digits    = 5
+)
+
+# Build threeparttable manually: footnote outside table sizing
+rf_xgb_note <- paste0(
+  "DA = Directional Accuracy (fraction of test-set observations where the ",
+  "predicted sign matches the realised sign). ",
+  "Naive DA uses the previous day's return (lag1) as the prediction. ",
+  "R2 is out-of-sample and may be negative if the model performs worse than the mean."
+)
+
+latex_tbl <- paste0(
+  "\\begin{table}[!ht]\n\\centering\n",
+  "\\begin{threeparttable}\n",
+  "\\caption{Random Forest and XGBoost: Out-of-Sample Performance by Horizon}\n",
+  "\\label{tab:rf_xgboost_metrics}\n",
+  "\\resizebox{\\linewidth}{!}{%\n",
+  as.character(latex_tbl), "\n",
+  "}\n",
+  "\\begin{tablenotes}\n\\footnotesize\n",
+  "\\item \\textit{Note.} ", rf_xgb_note, "\n",
+  "\\end{tablenotes}\n",
+  "\\end{threeparttable}\n",
+  "\\end{table}"
+)
+
+writeLines(latex_tbl, here("paper", "tables", "rf_xgboost_metrics.tex"))
 message("LaTeX table saved to paper/tables/rf_xgboost_metrics.tex")
 message("04_models_rf_xgboost.Rmd: Complete.")
 ```

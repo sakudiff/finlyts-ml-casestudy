@@ -1,0 +1,31 @@
+\begin{table}[!ht]
+\centering
+\begin{threeparttable}
+\caption{OLS Coefficient Estimates: 1-Day Horizon}
+\label{tab:ols_coef_1da}
+\small
+\begin{tabular*}{\linewidth}{@{\extracolsep{\fill}} l r r r l}
+\toprule
+Predictor & Est. & SE & $t$ & Sig. \\
+\midrule
+Intercept & 0.2717 & 0.2115 & 1.2845 &  \\
+r\_bpi & -0.2100 & 0.0771 & -2.7220 & *** \\
+r\_bdo & 0.0375 & 0.0298 & 1.2554 &  \\
+r\_psei & 0.0183 & 0.0660 & 0.2769 &  \\
+r\_fx & -0.2137 & 0.1446 & -1.4774 &  \\
+r\_us10y & 0.0014 & 0.0238 & 0.0570 &  \\
+ema12 & -0.0002 & 0.0023 & -0.0904 &  \\
+ema26 & 0.0002 & 0.0023 & 0.0848 &  \\
+ma\_ratio & -0.2723 & 0.2096 & -1.2995 &  \\
+lag1 & -0.2201 & 0.0803 & -2.7412 & *** \\
+lag2 & -0.0505 & 0.0577 & -0.8752 &  \\
+lag3 & -0.0565 & 0.0431 & -1.3104 &  \\
+mom5 & 0.0657 & 0.0351 & 1.8711 & * \\
+\bottomrule
+\end{tabular*}
+\begin{tablenotes}
+\footnotesize
+\item \textit{Note.} Newey-West HAC standard errors with 5 lags. Significance codes: *** $p < 0.01$, ** $p < 0.05$, * $p < 0.10$. Predictors ma5, ma10, ma20, and vol20 excluded to mitigate multicollinearity (see VIF diagnostic). Training period: 2087 observations.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}

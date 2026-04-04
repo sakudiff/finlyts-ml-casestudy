@@ -1,0 +1,23 @@
+\begin{table}[!ht]
+\centering
+\begin{threeparttable}
+\caption{Directional Accuracy by Model and Prediction Horizon}
+\label{tab:eval_da}
+
+\begin{tabular}{lrrrrrr}
+\toprule
+Model & DA 1d & DA 3d & DA 5d & Naive 1d & Naive 3d & Naive 5d\\
+\midrule
+OLS & 0.3314 & 0.4904 & 0.5115 & 0.2663 & 0.3161 & 0.2969\\
+Random Forest & 0.4367 & 0.4744 & 0.4717 & 0.4286 & 0.4151 & 0.4286\\
+XGBoost & 0.4043 & 0.4582 & 0.4636 & 0.4286 & 0.4151 & 0.4286\\
+SVM & 0.3276 & 0.4885 & 0.4904 & 0.2663 & 0.3161 & 0.2969\\
+ANN & 0.3582 & 0.4751 & 0.4923 & 0.2663 & 0.3161 & 0.2969\\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}
+\footnotesize
+\item \textit{Note.} DA = fraction of test-set observations where predicted sign matches realised sign. Naive benchmark uses the previous day BPI log return (lag1). Values above 0.50 indicate better-than-random directional prediction.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}

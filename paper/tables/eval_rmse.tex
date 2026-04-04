@@ -1,0 +1,23 @@
+\begin{table}[!ht]
+\centering
+\begin{threeparttable}
+\caption{Out-of-Sample RMSE by Model and Prediction Horizon}
+\label{tab:eval_rmse}
+
+\begin{tabular}{lrrr}
+\toprule
+Model & 1-Day & 3-Day & 5-Day\\
+\midrule
+OLS & 0.01655 & 0.02660 & 0.03333\\
+Random Forest & 0.01962 & 0.03007 & 0.03791\\
+XGBoost & 0.01942 & 0.02924 & 0.03618\\
+SVM & 0.01647 & 0.02634 & 0.03271\\
+ANN & 0.01641 & 0.02647 & 0.03291\\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}
+\footnotesize
+\item \textit{Note.} Lower values indicate better predictive accuracy. All models estimated on 80/20 chronological split. Training period ends 2024-10-21. Test period: 2024-10-22 to 2026-04-01.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
