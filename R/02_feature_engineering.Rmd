@@ -387,7 +387,7 @@ latex_table <- kable(
   col.names = c("Variable", "Mean", "SD", "Min", "Max", "Skewness", "Ex. Kurtosis")
 )
 
-# Build threeparttable manually: footnote outside table sizing
+# Build table manually: footnote outside table sizing, no resizebox
 desc_note <- paste0(
   "Sample: January 2, 2019 to April 1, 2026 (", nrow(features),
   " observations after initialization window removal). ",
@@ -397,12 +397,12 @@ desc_note <- paste0(
 
 latex_table <- paste0(
   "\\begin{table}[!ht]\n\\centering\n",
-  "\\begin{threeparttable}\n",
+  "\\caption{\\label{tab:descriptive_stats}Descriptive Statistics: Target Variables and Key Features (2019--2026)}\n",
+  "\\footnotesize\n",
+  "\\setlength{\\tabcolsep}{5pt}\n",
   as.character(latex_table), "\n",
-  "\\begin{tablenotes}\n\\footnotesize\n",
-  "\\item \\textit{Note.} ", desc_note, "\n",
-  "\\end{tablenotes}\n",
-  "\\end{threeparttable}\n",
+  "\\multicolumn{7}{p{\\linewidth}}{\\rule{0pt}{1em}\\textit{Note.} ", desc_note, "}\\\\\n",
+  "\\end{tabular}\n",
   "\\end{table}"
 )
 

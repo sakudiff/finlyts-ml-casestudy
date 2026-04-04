@@ -311,7 +311,7 @@ latex_metrics <- kable(
   digits    = 5
 )
 
-# Build threeparttable manually: footnote outside table sizing
+# Build table manually: footnote outside table sizing
 metrics_note <- paste0(
   "DA = Directional Accuracy (fraction of test-set observations where the predicted ",
   "sign matches the realised sign). Naive benchmark uses the previous day's BPI log ",
@@ -322,16 +322,14 @@ metrics_note <- paste0(
 
 latex_metrics <- paste0(
   "\\begin{table}[!ht]\n\\centering\n",
-  "\\begin{threeparttable}\n",
   "\\caption{OLS Baseline and Naive Benchmark: Out-of-Sample Performance by Horizon}\n",
   "\\label{tab:ols_metrics}\n",
-  "\\resizebox{\\linewidth}{!}{%\n",
+  "\\footnotesize\n",
+  "\\setlength{\\tabcolsep}{3.5pt}\n",
   as.character(latex_metrics), "\n",
-  "}\n",
   "\\begin{tablenotes}\n\\footnotesize\n",
   "\\item \\textit{Note.} ", metrics_note, "\n",
   "\\end{tablenotes}\n",
-  "\\end{threeparttable}\n",
   "\\end{table}"
 )
 
@@ -382,26 +380,22 @@ for (h in seq_along(TARGET_COLS)) {
            row["tval"], " & ", row["sig"], " \\\\")
   })
 
-  # Use resizebox to shrink table to \linewidth, preserving aspect ratio
+  # Use sidewaystable for landscape page, tabular* with extracolsep for perfect fit
   tex_table <- paste0(
-    "\\begin{table}[!ht]\n\\centering\n",
-    "\\begin{threeparttable}\n",
+    "\\begin{sidewaystable}[p]\n\\centering\n",
     "\\caption{OLS Coefficient Estimates: ", horizon_label_tex, " Horizon}\n",
     "\\label{tab:ols_coef_", suffix, "}\n",
-    "\\resizebox{\\linewidth}{!}{%\n",
-    "\\begin{tabular}{l r r r l}\n",
+    "\\footnotesize\n",
+    "\\setlength{\\tabcolsep}{6pt}\n",
+    "\\begin{tabular*}{\\linewidth}{@{\\extracolsep{\\fill}} l r r r l}\n",
     "\\toprule\n",
     "Predictor & Est. & SE & $t$ & Sig. \\\\\n",
     "\\midrule\n",
     paste(tab_rows, collapse = "\n"), "\n",
     "\\bottomrule\n",
-    "\\end{tabular}%\n",
-    "}\n",
-    "\\begin{tablenotes}\n\\footnotesize\n",
-    "\\item \\textit{Note.} ", coef_note, "\n",
-    "\\end{tablenotes}\n",
-    "\\end{threeparttable}\n",
-    "\\end{table}"
+    "\\end{tabular*}\n",
+    "\\multicolumn{5}{p{\\linewidth}}{\\rule{0pt}{1em}\\textit{Note.} ", coef_note, "}\\\\\n",
+    "\\end{sidewaystable}"
   )
 
   fname <- paste0("ols_coef_", suffix, ".tex")

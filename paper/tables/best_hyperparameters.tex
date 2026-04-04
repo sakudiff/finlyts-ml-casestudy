@@ -1,22 +1,23 @@
 \begin{table}[ht!]
 \centering
 \caption{\label{tab:best_hyperparameters}Optimal Hyperparameters Selected via Rolling-Origin Cross-Validation}
-\centering
+\small
+\setlength{\tabcolsep}{6pt}
 \begin{tabular}[t]{llccc}
 \toprule
 Model & Parameter & 1-Day & 3-Day & 5-Day\\
 \midrule
 ann & Epochs & 200 & 200 & 200\\
 ann & Hidden Units & 12 & 7 & 3\\
-ann & Penalty (Decay) & 0.72596 & 0.54494 & 0.62412\\
+ann & Penalty (Decay) & 0.7260 & 0.5449 & 0.6241\\
 rf & min\_n & 11 & 28 & 14\\
 rf & mtry & 3 & 3 & 4\\
 \addlinespace
 rf & trees & 500 & 500 & 500\\
-svm & Cost & 0.10419 & 0.03497 & 8.23014\\
+svm & Cost & 0.1042 & 0.0350 & 8.2301\\
 svm & Sigma (RBF) & 0.00985 & 0.00971 & 0.00011\\
 xgboost & Learning Rate & 0.00131 & 0.08938 & 0.00162\\
-xgboost & Loss Reduction & 2.38070085094023e-05 & 0.01764 & 0.0012\\
+xgboost & Loss Reduction & 0.000024 & 0.01764 & 0.00120\\
 \addlinespace
 xgboost & Stop Iter & 45 & 33 & 22\\
 xgboost & Tree Depth & 4 & 7 & 7\\
