@@ -440,7 +440,7 @@ latex_tbl <- kable(
   digits    = 5
 )
 
-# Build threeparttable manually: footnote outside table sizing
+# Build table manually: footnote outside table sizing
 svm_ann_note <- paste0(
   "DA = Directional Accuracy (fraction of test-set observations where the ",
   "predicted sign matches the realised sign). ",
@@ -452,16 +452,12 @@ svm_ann_note <- paste0(
 
 latex_tbl <- paste0(
   "\\begin{table}[!ht]\n\\centering\n",
-  "\\begin{threeparttable}\n",
-  "\\caption{SVM and ANN: Out-of-Sample Performance by Horizon}\n",
-  "\\label{tab:svm_ann_metrics}\n",
-  "\\resizebox{\\linewidth}{!}{%\n",
+  "\\caption{\\label{tab:svm_ann_metrics}SVM and ANN: Out-of-Sample Performance by Horizon}\n",
+  "\\footnotesize\n",
+  "\\setlength{\\tabcolsep}{3.5pt}\n",
   as.character(latex_tbl), "\n",
-  "}\n",
-  "\\begin{tablenotes}\n\\footnotesize\n",
-  "\\item \\textit{Note.} ", svm_ann_note, "\n",
-  "\\end{tablenotes}\n",
-  "\\end{threeparttable}\n",
+  "\\multicolumn{11}{p{\\linewidth}}{\\rule{0pt}{1em}\\textit{Note.} ", svm_ann_note, "}\\\\\n",
+  "\\end{tabular}\n",
   "\\end{table}"
 )
 

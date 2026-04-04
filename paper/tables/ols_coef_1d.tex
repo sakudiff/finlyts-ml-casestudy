@@ -1,10 +1,10 @@
-\begin{table}[!ht]
+\begin{sidewaystable}[p]
 \centering
-\begin{threeparttable}
 \caption{OLS Coefficient Estimates: 1-Day Horizon}
 \label{tab:ols_coef_1d}
-\resizebox{\linewidth}{!}{%
-\begin{tabular}{l r r r l}
+\footnotesize
+\setlength{\tabcolsep}{6pt}
+\begin{tabular*}{\linewidth}{@{\extracolsep{\fill}} l r r r l}
 \toprule
 Predictor & Est. & SE & $t$ & Sig. \\
 \midrule
@@ -33,11 +33,6 @@ interact & 0.5690 & 2.8459 & 0.1999 &  \\
 vol5\_sq & 1.1251 & 3.7889 & 0.2970 &  \\
 hi\_vol & -0.0054 & 0.0048 & -1.1285 &  \\
 \bottomrule
-\end{tabular}%
-}
-\begin{tablenotes}
-\footnotesize
-\item \textit{Note.} Newey-West HAC standard errors with 5 lags. Significance codes: *** $p < 0.01$, ** $p < 0.05$, * $p < 0.10$. Predictors ma5, ma10, ma20, and vol20 excluded to mitigate multicollinearity (see VIF diagnostic). Training period: 2087 observations.
-\end{tablenotes}
-\end{threeparttable}
-\end{table}
+\multicolumn{5}{p{\linewidth}}{\rule{0pt}{1em}\textit{Note.} Newey-West HAC standard errors with 5 lags. Significance codes: *** $p < 0.01$, ** $p < 0.05$, * $p < 0.10$. Predictors ma5, ma10, ma20, and vol20 excluded to mitigate multicollinearity (see VIF diagnostic). Training period: 2087 observations.}\\
+\end{tabular*}
+\end{sidewaystable}
