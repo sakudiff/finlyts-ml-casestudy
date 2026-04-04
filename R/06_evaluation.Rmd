@@ -4,27 +4,734 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+# Install any missing packages before loading
+pkgs <- c("tidyverse", "tidymodels", "here", "knitr", "kableExtra")
+invisible(lapply(pkgs, function(p) {
+  if (!requireNamespace(p, quietly = TRUE)) install.packages(p, quiet = TRUE)
+}))
+here::i_am("R/06_evaluation.Rmd")
+
+knitr::opts_chunk$set(
+  echo    = TRUE,
+  message = FALSE,
+  warning = FALSE
+)
 ```
 
-# PURPOSE: Aggregate all model results, produce final comparison tables and plots
-# ASSIGNED TO: Person 3 and Person 4 (joint)
-# DEPENDS ON: outputs from 03, 04, 05
+# 06 Final Evaluation and Model Comparison
 
-# DELIVERABLES:
-# - Table 1: RMSE across 5 models x 3 horizons
-# - Table 2: MAE across 5 models x 3 horizons
-# - Table 3: R-squared
-# - Table 4: Directional Accuracy
-# - Figure 1: Feature importance - RF
-# - Figure 2: Feature importance - XGBoost
-# - Figure 3: Predicted vs Actual (best model)
-# - Overfitting comparison: train vs test RMSE per model
+**Authors:** Aaron and Keira
+**Purpose:** Aggregate all model outputs from scripts 03, 04, and 05. Produce final comparison tables, overfitting diagnostics, horizon decay analysis, and naive benchmark evaluation. All plots follow QVRS (Quantitative Visualization and Reporting Standard) with Economist design conventions.
 
-```{r main}
+**Depends on:**
+- `output/predictions/ols_metrics.csv` (script 03)
+- `output/predictions/rf_xgboost_metrics.csv` (script 04)
+- `output/predictions/svm_ann_metrics.csv` (script 05)
+
+**Outputs:**
+- Tables: `eval_rmse.tex`, `eval_mae.tex`, `eval_r2.tex`, `eval_da.tex`, `overfitting.tex`, `naive_comparison.tex`, `main_results.tex`
+- Figures: `overfitting_comparison.png`, `horizon_decay.png`, `best_model_pred_actual.png`
+
+---
+
+## 1. Setup
+
+```{r libraries_constants}
 library(tidyverse)
+library(tidymodels)
+library(here)
 library(knitr)
 library(kableExtra)
 
-message("06_evaluation.R: Not yet implemented.")
+# Constants
+TARGET_COLS  <- c("target_1d", "target_3d", "target_5d")
+HORIZON_LABS <- c("1d",        "3d",        "5d")
+MODEL_NAMES  <- c("OLS", "Random Forest", "XGBoost", "SVM", "ANN")
+
+# QVRS colour tokens
+CLR_RED      <- "#E3120B"  # Economist Red — benchmarks and emphasis
+CLR_CHI_20   <- "#141F52"  # Chicago 20 — primary data
+CLR_CHI_30   <- "#1F2E7A"  # Chicago 30 — secondary
+CLR_CHI_45   <- "#2E45B8"  # Chicago 45 — tertiary
+CLR_CHI_55   <- "#475ED1"  # Chicago 55 — quaternary
+CLR_LON_95   <- "#F2F2F2"  # London 95 — grid lines
+CLR_LON_05   <- "#0D0D0D"  # London 5 — text
+CLR_LON_20   <- "#333333"  # London 20 — subtitles
+CLR_LON_35   <- "#595959"  # London 35 — captions
+CLR_LA_95    <- "#F5F4EF"  # Los Angeles 95 — background
+CLR_HK_45    <- "#1DC9A4"  # Hong Kong 45 — train bars
+CLR_TOK_45   <- "#C91D42"  # Tokyo 45 — test bars
+
+# QVRS ggplot2 theme — Economist standard
+theme_quant <- function() {
+  theme_minimal(base_size = 12) +
+    theme(
+      text = element_text(color = CLR_LON_05),
+      plot.title = element_text(face = "bold", size = 14, margin = margin(b = 5)),
+      plot.subtitle = element_text(size = 11, color = CLR_LON_20, margin = margin(b = 10)),
+      plot.caption = element_text(size = 8, color = CLR_LON_35, hjust = 0, margin = margin(t = 10)),
+      axis.title = element_text(size = 10, face = "bold"),
+      axis.text = element_text(size = 9),
+      panel.grid.minor = element_blank(),
+      panel.grid.major = element_line(color = CLR_LON_95, linewidth = 0.3),
+      legend.position = "bottom",
+      axis.ticks = element_blank(),
+      plot.background = element_rect(fill = CLR_LA_95, color = NA),
+      panel.background = element_rect(fill = CLR_LA_95, color = NA)
+    )
+}
+
+# Ensure output directories exist
+dir.create(here("paper", "tables"),  recursive = TRUE, showWarnings = FALSE)
+dir.create(here("paper", "figures"),  recursive = TRUE, showWarnings = FALSE)
+```
+
+---
+
+## 2. Load and Merge All Metrics
+
+```{r load_metrics}
+ols_metrics   <- read_csv(here("output", "predictions", "ols_metrics.csv"),   show_col_types = FALSE)
+rf_xgb_metrics <- read_csv(here("output", "predictions", "rf_xgboost_metrics.csv"), show_col_types = FALSE)
+svm_ann_metrics <- read_csv(here("output", "predictions", "svm_ann_metrics.csv"),   show_col_types = FALSE)
+
+# Separate naive rows from OLS metrics
+naive_rows   <- ols_metrics %>%
+  filter(Model == "Naive") %>%
+  mutate(
+    Horizon = case_when(
+      is.numeric(Horizon) ~ paste0(Horizon, "d"),
+      TRUE                ~ as.character(Horizon)
+    )
+  )
+ols_only     <- ols_metrics %>% filter(Model == "OLS")
+
+# Combine all model metrics (5 models x 3 horizons = 15 rows)
+# Horizon may be numeric (1, 3, 5) or character ("1d", "3d", "5d") depending on
+# how the source scripts wrote it. Normalise to character labels.
+all_metrics <- bind_rows(ols_only, rf_xgb_metrics, svm_ann_metrics) %>%
+  mutate(
+    Horizon = case_when(
+      is.numeric(Horizon) ~ paste0(Horizon, "d"),
+      TRUE                ~ as.character(Horizon)
+    )
+  ) %>%
+  drop_na(Horizon, RMSE, MAE, R2, DA) %>%
+  distinct(Model, Horizon, .keep_all = TRUE) %>%
+  mutate(
+    Model   = factor(Model, levels = MODEL_NAMES),
+    Horizon = factor(Horizon, levels = HORIZON_LABS)
+  )
+
+cat("Total model-horizon rows:", nrow(all_metrics), "\n")
+cat("Naive benchmark rows    :", nrow(naive_rows), "\n")
+cat("Models present:", paste(unique(all_metrics$Model), collapse = ", "), "\n")
+cat("Horizons present:", paste(unique(all_metrics$Horizon), collapse = ", "), "\n")
+```
+
+---
+
+## 3. LaTeX Comparison Tables
+
+Four tables. Each pivoted wide with models as rows and horizons as columns.
+
+### 3A. RMSE Table
+
+```{r table_rmse}
+rmse_wide <- all_metrics %>%
+  mutate(Horizon = as.character(Horizon)) %>%
+  select(Model, Horizon, RMSE) %>%
+  pivot_wider(names_from = Horizon, values_from = RMSE, names_prefix = "h_", values_fn = first) %>%
+  mutate(across(starts_with("h_"), ~round(.x, 5))) %>%
+  rename(`1d` = h_1d, `3d` = h_3d, `5d` = h_5d)
+
+latex_rmse <- kable(
+  rmse_wide,
+  format    = "latex",
+  booktabs  = TRUE,
+  escape    = FALSE,
+  linesep   = "",
+  col.names = c("Model", "1-Day", "3-Day", "5-Day")
+)
+
+rmse_note <- paste0(
+  "Lower values indicate better predictive accuracy. ",
+  "All models estimated on 80/20 chronological split. ",
+  "Training period ends 2024-10-21. Test period: 2024-10-22 to 2026-04-01."
+)
+
+latex_rmse <- paste0(
+  "\\begin{table}[!ht]\n\\centering\n",
+  "\\begin{threeparttable}\n",
+  "\\caption{Out-of-Sample RMSE by Model and Prediction Horizon}\n",
+  "\\label{tab:eval_rmse}\n",
+  as.character(latex_rmse), "\n",
+  "\\begin{tablenotes}\n\\footnotesize\n",
+  "\\item \\textit{Note.} ", rmse_note, "\n",
+  "\\end{tablenotes}\n",
+  "\\end{threeparttable}\n",
+  "\\end{table}"
+)
+
+writeLines(latex_rmse, here("paper", "tables", "eval_rmse.tex"))
+message("Saved: paper/tables/eval_rmse.tex")
+```
+
+### 3B. MAE Table
+
+```{r table_mae}
+mae_wide <- all_metrics %>%
+  mutate(Horizon = as.character(Horizon)) %>%
+  select(Model, Horizon, MAE) %>%
+  pivot_wider(names_from = Horizon, values_from = MAE, names_prefix = "h_", values_fn = first) %>%
+  mutate(across(starts_with("h_"), ~round(.x, 5))) %>%
+  rename(`1d` = h_1d, `3d` = h_3d, `5d` = h_5d)
+
+latex_mae <- kable(
+  mae_wide,
+  format    = "latex",
+  booktabs  = TRUE,
+  escape    = FALSE,
+  linesep   = "",
+  col.names = c("Model", "1-Day", "3-Day", "5-Day")
+)
+
+mae_note <- paste0(
+  "Mean Absolute Error. Lower values indicate better predictive accuracy. ",
+  "MAE is less sensitive to outlier predictions than RMSE."
+)
+
+latex_mae <- paste0(
+  "\\begin{table}[!ht]\n\\centering\n",
+  "\\begin{threeparttable}\n",
+  "\\caption{Out-of-Sample MAE by Model and Prediction Horizon}\n",
+  "\\label{tab:eval_mae}\n",
+  as.character(latex_mae), "\n",
+  "\\begin{tablenotes}\n\\footnotesize\n",
+  "\\item \\textit{Note.} ", mae_note, "\n",
+  "\\end{tablenotes}\n",
+  "\\end{threeparttable}\n",
+  "\\end{table}"
+)
+
+writeLines(latex_mae, here("paper", "tables", "eval_mae.tex"))
+message("Saved: paper/tables/eval_mae.tex")
+```
+
+### 3C. R-squared Table
+
+```{r table_r2}
+r2_wide <- all_metrics %>%
+  mutate(Horizon = as.character(Horizon)) %>%
+  select(Model, Horizon, R2) %>%
+  pivot_wider(names_from = Horizon, values_from = R2, names_prefix = "h_", values_fn = first) %>%
+  mutate(across(starts_with("h_"), ~round(.x, 5))) %>%
+  rename(`1d` = h_1d, `3d` = h_3d, `5d` = h_5d)
+
+latex_r2 <- kable(
+  r2_wide,
+  format    = "latex",
+  booktabs  = TRUE,
+  escape    = FALSE,
+  linesep   = "",
+  col.names = c("Model", "1-Day", "3-Day", "5-Day")
+)
+
+r2_note <- paste0(
+  "Out-of-sample R-squared computed as 1 minus the ratio of model MSE to mean MSE. ",
+  "Negative values indicate the model performs worse than predicting the mean return."
+)
+
+latex_r2 <- paste0(
+  "\\begin{table}[!ht]\n\\centering\n",
+  "\\begin{threeparttable}\n",
+  "\\caption{Out-of-Sample R-squared by Model and Prediction Horizon}\n",
+  "\\label{tab:eval_r2}\n",
+  as.character(latex_r2), "\n",
+  "\\begin{tablenotes}\n\\footnotesize\n",
+  "\\item \\textit{Note.} ", r2_note, "\n",
+  "\\end{tablenotes}\n",
+  "\\end{threeparttable}\n",
+  "\\end{table}"
+)
+
+writeLines(latex_r2, here("paper", "tables", "eval_r2.tex"))
+message("Saved: paper/tables/eval_r2.tex")
+```
+
+### 3D. Directional Accuracy Table
+
+```{r table_da}
+da_wide <- all_metrics %>%
+  mutate(Horizon = as.character(Horizon)) %>%
+  select(Model, Horizon, DA, Naive_DA) %>%
+  pivot_wider(
+    names_from  = Horizon,
+    values_from = c(DA, Naive_DA),
+    names_sep   = "_",
+    values_fn   = first
+  ) %>%
+  mutate(across(where(is.double), ~round(.x, 4)))
+
+# Reorder columns: Model, DA_1d, DA_3d, DA_5d, Naive_1d, Naive_3d, Naive_5d
+da_wide <- da_wide %>%
+  select(Model, DA_1d, DA_3d, DA_5d, Naive_DA_1d, Naive_DA_3d, Naive_DA_5d)
+
+latex_da <- kable(
+  da_wide,
+  format    = "latex",
+  booktabs  = TRUE,
+  escape    = FALSE,
+  linesep   = "",
+  col.names = c("Model", "DA 1d", "DA 3d", "DA 5d", "Naive 1d", "Naive 3d", "Naive 5d")
+)
+
+da_note <- paste0(
+  "DA = fraction of test-set observations where predicted sign matches realised sign. ",
+  "Naive benchmark uses the previous day BPI log return (lag1). ",
+  "Values above 0.50 indicate better-than-random directional prediction."
+)
+
+latex_da <- paste0(
+  "\\begin{table}[!ht]\n\\centering\n",
+  "\\begin{threeparttable}\n",
+  "\\caption{Directional Accuracy by Model and Prediction Horizon}\n",
+  "\\label{tab:eval_da}\n",
+  as.character(latex_da), "\n",
+  "\\begin{tablenotes}\n\\footnotesize\n",
+  "\\item \\textit{Note.} ", da_note, "\n",
+  "\\end{tablenotes}\n",
+  "\\end{threeparttable}\n",
+  "\\end{table}"
+)
+
+writeLines(latex_da, here("paper", "tables", "eval_da.tex"))
+message("Saved: paper/tables/eval_da.tex")
+```
+
+---
+
+## 4. Overfitting Analysis
+
+```{r overfitting}
+overfit_df <- all_metrics %>%
+  mutate(
+    RMSE_Gap = round(Train_RMSE - RMSE, 5),
+    Model    = as.character(Model)
+  )
+
+# Bar plot: Train RMSE vs Test RMSE by model, faceted by horizon
+overfit_plot_data <- all_metrics %>%
+  select(Model, Horizon, RMSE, Train_RMSE) %>%
+  pivot_longer(cols = c(RMSE, Train_RMSE), names_to = "Set", values_to = "Value") %>%
+  mutate(
+    Set = if_else(Set == "Train_RMSE", "In-Sample", "Out-of-Sample"),
+    Set = factor(Set, levels = c("In-Sample", "Out-of-Sample")),
+    Model = factor(Model, levels = MODEL_NAMES)
+  )
+
+# Model colour mapping
+model_colors <- setNames(
+  c(CLR_CHI_20, CLR_CHI_30, CLR_CHI_45, CLR_CHI_55, CLR_RED),
+  MODEL_NAMES
+)
+
+overfit_plot <- ggplot(overfit_plot_data, aes(x = Model, y = Value, fill = Set)) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6) +
+  facet_wrap(~Horizon, nrow = 1, labeller = labeller(Horizon = c(
+    "1d" = "1-Day Horizon", "3d" = "3-Day Horizon", "5d" = "5-Day Horizon"
+  ))) +
+  scale_fill_manual(values = c("In-Sample" = CLR_HK_45, "Out-of-Sample" = CLR_TOK_45)) +
+  labs(
+    title    = "Train and Test RMSE Divergence Signals Overfitting",
+    subtitle = "In-sample error is systematically lower than out-of-sample error across all models",
+    x        = NULL,
+    y        = "RMSE (Daily Log Return)",
+    fill     = NULL,
+    caption  = "Source. Authors calculations. Training period ends 2024-10-21. Test period 2024-10-22 to 2026-04-01."
+  ) +
+  theme_quant() +
+  theme(
+    strip.text = element_text(face = "bold", size = 10),
+    legend.position = "bottom",
+    axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1, size = 8)
+  )
+
+ggsave(
+  here("paper", "figures", "overfitting_comparison.png"),
+  overfit_plot,
+  width = 11, height = 5, dpi = 300
+)
+message("Saved: paper/figures/overfitting_comparison.png")
+
+# LaTeX table
+overfit_tex <- overfit_df %>%
+  select(Model, Horizon, Train_RMSE, RMSE, RMSE_Gap) %>%
+  mutate(
+    across(c(Train_RMSE, RMSE, RMSE_Gap), ~round(.x, 5))
+  )
+
+latex_overfit <- kable(
+  overfit_tex,
+  format    = "latex",
+  booktabs  = TRUE,
+  escape    = FALSE,
+  linesep   = "",
+  col.names = c("Model", "Horizon", "Train RMSE", "Test RMSE", "Gap")
+)
+
+overfit_note <- paste0(
+  "Gap = Train RMSE minus Test RMSE. Positive values indicate the model fits ",
+  "training data more closely than it generalises to unseen observations. ",
+  "Large gaps relative to test RMSE suggest overfitting."
+)
+
+latex_overfit <- paste0(
+  "\\begin{table}[!ht]\n\\centering\n",
+  "\\begin{threeparttable}\n",
+  "\\caption{Overfitting Diagnostic: Train versus Test RMSE}\n",
+  "\\label{tab:overfitting}\n",
+  as.character(latex_overfit), "\n",
+  "\\begin{tablenotes}\n\\footnotesize\n",
+  "\\item \\textit{Note.} ", overfit_note, "\n",
+  "\\end{tablenotes}\n",
+  "\\end{threeparttable}\n",
+  "\\end{table}"
+)
+
+writeLines(latex_overfit, here("paper", "tables", "overfitting.tex"))
+message("Saved: paper/tables/overfitting.tex")
+```
+
+---
+
+## 5. Best Model Predicted versus Actual
+
+```{r best_model}
+# Identify best model by lowest test RMSE on the 1-day horizon
+best_model_name <- all_metrics %>%
+  filter(Horizon == "1d") %>%
+  slice_min(RMSE, n = 1) %>%
+  pull(Model) %>%
+  as.character()
+
+cat("Best model (1-day RMSE):", best_model_name, "\n")
+
+# Map model name to saved model file prefix
+model_file_prefix <- case_when(
+  best_model_name == "OLS"           ~ "ols",
+  best_model_name == "Random Forest" ~ "rf",
+  best_model_name == "XGBoost"       ~ "xgboost",
+  best_model_name == "SVM"           ~ "svm",
+  best_model_name == "ANN"           ~ "ann",
+  TRUE                               ~ "unknown"
+)
+
+# Load the best model and generate test predictions
+best_model_path <- here("output", "models", paste0(model_file_prefix, "_1d.rds"))
+
+if (file.exists(best_model_path)) {
+  best_fit <- readRDS(best_model_path)
+
+  # Load features for test set reconstruction
+  features <- read_csv(here("data", "processed", "features.csv"), show_col_types = FALSE)
+  n_total  <- nrow(features)
+  n_train  <- floor(0.80 * n_total)
+  test_df  <- features[(n_train + 1L):n_total, ]
+
+  # Determine predictor columns based on model type
+  if (best_model_name == "OLS") {
+    pred_cols <- c(
+      "r_bpi", "r_bdo", "r_psei", "r_fx", "r_us10y",
+      "ema12", "ema26", "ma_ratio",
+      "lag1", "lag2", "lag3", "mom5", "mom10", "rsi14", "macd", "macd_signal",
+      "vol5", "vol10", "vol_ratio",
+      "lag_psei", "interact", "vol5_sq", "hi_vol"
+    )
+  } else {
+    pred_cols <- c(
+      "r_bpi", "r_bdo", "r_psei", "r_fx", "r_us10y",
+      "ma5", "ma10", "ma20", "ema12", "ema26", "ma_ratio",
+      "lag1", "lag2", "lag3", "mom5", "mom10", "rsi14", "macd", "macd_signal",
+      "vol5", "vol10", "vol20", "vol_ratio",
+      "lag_psei", "interact", "vol5_sq", "hi_vol"
+    )
+  }
+
+  test_h <- test_df %>% select(all_of(c("target_1d", pred_cols)))
+
+  if (best_model_name == "OLS") {
+    test_pred <- predict(best_fit, newdata = test_h)
+  } else {
+    test_pred <- predict(best_fit, new_data = test_h)$.pred
+  }
+
+  best_actual <- test_h$target_1d
+} else {
+  # Fallback: use predictions from CSV
+  cat("Model file not found. Falling back to CSV predictions.\n")
+  pred_csv <- read_csv(here("output", "predictions", "ols_predictions.csv"), show_col_types = FALSE)
+  best_actual <- pred_csv$actual_target_1d
+  test_pred   <- pred_csv[[paste0("ols_pred_1d")]]
+}
+
+# Scatter plot
+best_plot <- ggplot(
+  tibble(Actual = best_actual, Predicted = as.numeric(test_pred)),
+  aes(x = Actual, y = Predicted)
+) +
+  geom_point(color = CLR_CHI_20, alpha = 0.5, size = 1.2) +
+  geom_abline(intercept = 0, slope = 1, color = CLR_RED, linetype = "dashed", linewidth = 0.8) +
+  labs(
+    title    = paste(best_model_name, "Predictions Cluster Around Zero"),
+    subtitle = paste0("1-Day Horizon. Test RMSE: ",
+                      round(all_metrics %>% filter(Model == best_model_name, Horizon == "1d") %>% pull(RMSE), 5)),
+    x        = "Actual Log Return",
+    y        = "Predicted Log Return",
+    caption  = paste0("Source. Authors calculations. ", best_model_name,
+                      " model trained on 80 percent sample. Test period 2024-10-22 to 2026-04-01.")
+  ) +
+  theme_quant()
+
+ggsave(
+  here("paper", "figures", "best_model_pred_actual.png"),
+  best_plot,
+  width = 8, height = 6, dpi = 300
+)
+message("Saved: paper/figures/best_model_pred_actual.png")
+```
+
+---
+
+## 6. Horizon Decay
+
+```{r horizon_decay}
+# Line plot: RMSE by horizon for each model, with naive as benchmark
+horizon_plot_data <- all_metrics %>%
+  mutate(Horizon_num = as.numeric(factor(Horizon, levels = HORIZON_LABS)))
+
+# Add naive benchmark
+naive_plot_data <- naive_rows %>%
+  drop_na(Horizon, RMSE) %>%
+  mutate(
+    Horizon_num = as.numeric(factor(Horizon, levels = HORIZON_LABS)),
+    Model = "Naive Benchmark"
+  ) %>%
+  select(Model, Horizon_num, RMSE)
+
+horizon_plot <- ggplot() +
+  geom_line(
+    data = horizon_plot_data,
+    aes(x = Horizon_num, y = RMSE, color = Model, group = Model),
+    linewidth = 0.8
+  ) +
+  geom_point(
+    data = horizon_plot_data,
+    aes(x = Horizon_num, y = RMSE, color = Model),
+    size = 2
+  ) +
+  geom_line(
+    data = naive_plot_data,
+    aes(x = Horizon_num, y = RMSE),
+    color = CLR_RED,
+    linewidth = 0.8,
+    linetype = "dashed"
+  ) +
+  geom_point(
+    data = naive_plot_data,
+    aes(x = Horizon_num, y = RMSE),
+    color = CLR_RED,
+    size = 2
+  ) +
+  scale_x_continuous(breaks = 1:3, labels = c("1-Day", "3-Day", "5-Day")) +
+  scale_color_manual(values = model_colors) +
+  labs(
+    title    = "Predictive Accuracy Decays as the Forecast Horizon Extends",
+    subtitle = "RMSE rises from 1-day to 5-day for all models. Naive benchmark shown for reference.",
+    x        = "Forecast Horizon",
+    y        = "RMSE (Daily Log Return)",
+    color    = NULL,
+    caption  = "Source. Authors calculations. Dashed red line is the naive benchmark using lagged return."
+  ) +
+  theme_quant() +
+  theme(legend.position = "bottom")
+
+ggsave(
+  here("paper", "figures", "horizon_decay.png"),
+  horizon_plot,
+  width = 8, height = 6, dpi = 300
+)
+message("Saved: paper/figures/horizon_decay.png")
+```
+
+---
+
+## 7. Naive Benchmark Comparison
+
+```{r naive_comparison}
+# Merge model DA with naive DA
+naive_comp <- all_metrics %>%
+  select(Model, Horizon, DA, Naive_DA) %>%
+  mutate(
+    Beats_Naive = if_else(DA > Naive_DA, "Yes", "No"),
+    DA_Diff     = round(DA - Naive_DA, 4)
+  ) %>%
+  arrange(Model, Horizon)
+
+latex_naive <- kable(
+  naive_comp,
+  format    = "latex",
+  booktabs  = TRUE,
+  escape    = FALSE,
+  linesep   = "",
+  col.names = c("Model", "Horizon", "DA", "Naive DA", "Beats Naive", "DA Difference")
+)
+
+naive_note <- paste0(
+  "DA Difference = Model DA minus Naive DA. Positive values indicate the model ",
+  "outperforms the naive benchmark. The naive benchmark uses the previous day ",
+  "BPI log return (lag1) as the prediction."
+)
+
+latex_naive <- paste0(
+  "\\begin{table}[!ht]\n\\centering\n",
+  "\\begin{threeparttable}\n",
+  "\\caption{Directional Accuracy versus Naive Benchmark}\n",
+  "\\label{tab:naive_comparison}\n",
+  as.character(latex_naive), "\n",
+  "\\begin{tablenotes}\n\\footnotesize\n",
+  "\\item \\textit{Note.} ", naive_note, "\n",
+  "\\end{tablenotes}\n",
+  "\\end{threeparttable}\n",
+  "\\end{table}"
+)
+
+writeLines(latex_naive, here("paper", "tables", "naive_comparison.tex"))
+message("Saved: paper/tables/naive_comparison.tex")
+```
+
+---
+
+## 8. Consolidated Summary Table
+
+Compact master table with RMSE and DA for quick reference in the paper.
+
+```{r main_results}
+main_tbl <- all_metrics %>%
+  mutate(Horizon = as.character(Horizon)) %>%
+  select(Model, Horizon, RMSE, DA) %>%
+  mutate(
+    RMSE = round(RMSE, 5),
+    DA   = round(DA, 4)
+  ) %>%
+  pivot_wider(
+    names_from  = Horizon,
+    values_from = c(RMSE, DA),
+    names_sep   = "_",
+    values_fn   = first
+  ) %>%
+  select(
+    Model,
+    RMSE_1d, DA_1d,
+    RMSE_3d, DA_3d,
+    RMSE_5d, DA_5d
+  )
+
+latex_main <- kable(
+  main_tbl,
+  format    = "latex",
+  booktabs  = TRUE,
+  escape    = FALSE,
+  linesep   = "",
+  col.names = c("Model", "RMSE 1d", "DA 1d", "RMSE 3d", "DA 3d", "RMSE 5d", "DA 5d")
+)
+
+main_note <- paste0(
+  "RMSE = Root Mean Squared Error. DA = Directional Accuracy. ",
+  "Negative R-squared values indicate the model performs worse than predicting the mean return."
+)
+
+latex_main <- paste0(
+  "\\begin{table}[!ht]\n\\centering\n",
+  "\\begin{threeparttable}\n",
+  "\\caption{Summary of Out-of-Sample RMSE and Directional Accuracy}\n",
+  "\\label{tab:main_results}\n",
+  as.character(latex_main), "\n",
+  "\\begin{tablenotes}\n\\footnotesize\n",
+  "\\item \\textit{Note.} ", main_note, "\n",
+  "\\end{tablenotes}\n",
+  "\\end{threeparttable}\n",
+  "\\end{table}"
+)
+
+writeLines(latex_main, here("paper", "tables", "main_results.tex"))
+message("Saved: paper/tables/main_results.tex")
+```
+
+---
+
+## 9. Sanity Checks
+
+```{r sanity_checks}
+cat("=== SANITY CHECKS ===\n\n")
+
+# 1. Row count: 5 models x 3 horizons = 15
+expected_rows <- 15
+actual_rows   <- nrow(all_metrics)
+cat("1. Model-horizon rows:", actual_rows,
+    if (actual_rows == expected_rows) "(PASS)\n"
+    else paste0("(FAIL — expected", expected_rows, ", got", actual_rows, ")\n"))
+
+# 2. All 5 models present
+models_present <- sort(unique(as.character(all_metrics$Model)))
+models_expected <- sort(MODEL_NAMES)
+cat("2. Models present:", paste(models_present, collapse = ", "), "\n")
+cat("   Models expected:", paste(models_expected, collapse = ", "), "\n")
+cat("   ", if (identical(models_present, models_expected)) "PASS\n" else "FAIL\n")
+
+# 3. All 3 horizons present
+horizons_present <- sort(unique(as.character(all_metrics$Horizon)))
+horizons_expected <- sort(HORIZON_LABS)
+cat("3. Horizons present:", paste(horizons_present, collapse = ", "),
+    if (identical(horizons_present, horizons_expected)) "(PASS)\n"
+    else "(FAIL)\n")
+
+# 4. No NA in key metrics
+na_check <- all_metrics %>%
+  summarise(
+    na_RMSE = sum(is.na(RMSE)),
+    na_MAE  = sum(is.na(MAE)),
+    na_R2   = sum(is.na(R2)),
+    na_DA   = sum(is.na(DA))
+  )
+if (all(na_check == 0)) {
+  cat("4. No NA in metrics: PASS\n")
+} else {
+  cat("4. NA in metrics: FAIL\n")
+  print(na_check)
+}
+
+# 5. Output files exist
+output_files <- c(
+  # Tables
+  here("paper", "tables", "eval_rmse.tex"),
+  here("paper", "tables", "eval_mae.tex"),
+  here("paper", "tables", "eval_r2.tex"),
+  here("paper", "tables", "eval_da.tex"),
+  here("paper", "tables", "overfitting.tex"),
+  here("paper", "tables", "naive_comparison.tex"),
+  here("paper", "tables", "main_results.tex"),
+  # Figures
+  here("paper", "figures", "overfitting_comparison.png"),
+  here("paper", "figures", "horizon_decay.png"),
+  here("paper", "figures", "best_model_pred_actual.png")
+)
+
+cat("5. Output files:\n")
+for (f in output_files) {
+  exists_flag <- file.exists(f)
+  cat("   ", basename(f), ": ", if (exists_flag) "PASS\n" else "FAIL (missing)\n")
+}
+
+cat("\n=== All checks complete ===\n")
 ```

@@ -1,0 +1,23 @@
+\begin{table}[!ht]
+\centering
+\begin{threeparttable}
+\caption{Out-of-Sample R-squared by Model and Prediction Horizon}
+\label{tab:eval_r2}
+
+\begin{tabular}{lrrr}
+\toprule
+Model & 1-Day & 3-Day & 5-Day\\
+\midrule
+OLS & -0.01272 & -0.01216 & -0.05211\\
+Random Forest & -0.01379 & -0.06250 & -0.13427\\
+XGBoost & 0.00759 & -0.00499 & -0.03306\\
+SVM & -0.00330 & 0.00733 & -0.01367\\
+ANN & 0.00342 & -0.00211 & -0.02584\\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}
+\footnotesize
+\item \textit{Note.} Out-of-sample R-squared computed as 1 minus the ratio of model MSE to mean MSE. Negative values indicate the model performs worse than predicting the mean return.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}

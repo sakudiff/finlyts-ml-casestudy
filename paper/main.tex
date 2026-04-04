@@ -23,6 +23,7 @@
 \usepackage{ragged2e}
 \usepackage{indentfirst}
 \usepackage{csquotes}
+\usepackage{rotating}
 \usepackage[hidelinks]{hyperref}
 \usepackage{url}
 \usepackage[style=apa, backend=biber]{biblatex}
@@ -455,24 +456,52 @@ Table \ref{tab:ols_metrics} reports OLS and naïve benchmark performance across 
 
 \input{tables/ols_metrics.tex}
 
-\textbf{\color{red}[TODO: Aaron/Keira --- Implement script 06\_evaluation.Rmd to aggregate OLS and ML results into a single integrated table. Keep this table in the main text as per professor preference, but introduce new visualizations (DA Comparison Chart, Train vs. Test Overfitting Gap) alongside it to aid interpretation.]}
-
-Tables \ref{tab:rf_xgboost_metrics} and \ref{tab:svm_ann_metrics} report the comprehensive performance metrics. To explicitly quantify overfitting, we compare in-sample (Train) and out-of-sample (Test) diagnostic variants for every model.
+Tables \ref{tab:rf_xgboost_metrics} and \ref{tab:svm_ann_metrics} report the comprehensive performance metrics for the machine learning architectures.
 
 \input{tables/rf_xgboost_metrics.tex}
 \input{tables/svm_ann_metrics.tex}
 
-The statistical results reveal a significant performance delta across algorithmic architectures. Tree-based ensembles, specifically Random Forest, demonstrate a severe overfitting signature across all horizons. For the 5-day cumulative return, Random Forest achieved a Training $R^2$ of 0.783 but a Test $R^2$ of -0.134. This indicates that the ensemble's 500 deep decision trees effectively "memorized" idiosyncratic noise from the 2019--2024 training period, resulting in out-of-sample predictions that are less accurate than a sample mean.
+Table \ref{tab:main_results} provides a consolidated summary of out-of-sample RMSE and Directional Accuracy across all models and horizons.
+
+\input{tables/main_results.tex}
+
+The statistical results reveal a significant performance delta across algorithmic architectures. Tree-based ensembles, specifically Random Forest, demonstrate a severe overfitting signature across all horizons. For the 5-day cumulative return, Random Forest achieved a Training $R^2$ of 0.783 but a Test $R^2$ of -0.134. This indicates that the ensemble's 500 deep decision trees effectively ``memorized'' idiosyncratic noise from the 2019--2024 training period, resulting in out-of-sample predictions that are less accurate than a sample mean.
 
 Conversely, regularized architectures such as Support Vector Machines (SVM) and Artificial Neural Networks (ANN) exhibit superior generalization. SVM achieved the leading out-of-sample Directional Accuracy of 51.2\% at the 5-day horizon, outperforming the naive benchmark of 42.8\%. These results suggest that the explicit penalty terms and kernel-based decision boundaries provide a more robust signal for the Philippine banking sector than high-capacity tree ensembles.
 
+Figure \ref{fig:overfitting} visualizes the train-versus-test RMSE gap across all models and horizons. The divergence between in-sample and out-of-sample error is the cardinal diagnostic of overfitting.
+
+\begin{figure}[ht!]
+    \centering
+    \includegraphics[width=\textwidth]{figures/overfitting_comparison.png}
+    \caption{Train and Test RMSE Divergence by Model and Horizon}
+    \label{fig:overfitting}
+    \textit{Note.} Green bars represent in-sample error. Red bars represent out-of-sample error. The gap between the two quantifies overfitting severity.
+\end{figure}
+
+Figure \ref{fig:horizon_decay} illustrates the systematic degradation of predictive accuracy as the forecast horizon extends from 1 day to 5 days.
+
+\begin{figure}[ht!]
+    \centering
+    \includegraphics[width=0.85\textwidth]{figures/horizon_decay.png}
+    \caption{RMSE Increases with Forecast Horizon for All Models}
+    \label{fig:horizon_decay}
+    \textit{Note.} Each line represents one model. The dashed red line is the naive benchmark using the previous day's return. Rising RMSE reflects compounding uncertainty over longer cumulative windows.
+\end{figure}
+
+Table \ref{tab:naive_comparison} reports whether each model's Directional Accuracy exceeds the naive lagged-return benchmark.
+
+\input{tables/naive_comparison.tex}
+
 \subsection{Variable Importance and Predictive Drivers}
 
-Table \ref{tab:ols_coefficients} reports OLS coefficient estimates with Newey-West standard errors
-for all three horizons. Predictors significant at the 10\% level represent linear channels through
+Tables \ref{tab:ols_coef_1d} through \ref{tab:ols_coef_5d} report OLS coefficient estimates with Newey-West standard errors
+for the 1-day, 3-day, and 5-day horizons respectively. Predictors significant at the 10\% level represent linear channels through
 which lagged returns, technical indicators, and macro variables map to future BPI returns.
 
-\input{tables/ols_coefficients.tex}
+\input{tables/ols_coef_1d.tex}
+\input{tables/ols_coef_3d.tex}
+\input{tables/ols_coef_5d.tex}
 
 Feature importance represents the contribution of each predictor to the model's total gain or impurity reduction. Figures \ref{fig:rf_importance} and \ref{fig:xgboost_importance} visualize these rankings across the three horizons for Random Forest and XGBoost, respectively.
 
@@ -524,7 +553,15 @@ XGBoost importance profiles (Figure \ref{fig:xgboost_importance}) provide a simi
 
 \subsection{Forecasting Profile Diagnostics}
 
-Scatter plots comparing predicted returns to actual realizations provide a visual diagnostic of model performance. The red dashed line ($y=x$) represents a perfect forecast.
+Scatter plots comparing predicted returns to actual realizations provide a visual diagnostic of model performance. The red dashed line ($y=x$) represents a perfect forecast. Figure \ref{fig:best_model} shows the best-performing model's predictions.
+
+\begin{figure}[ht!]
+    \centering
+    \includegraphics[width=0.8\textwidth]{figures/best_model_pred_actual.png}
+    \caption{Best Model Predicted versus Actual Log Returns (1-Day Horizon)}
+    \label{fig:best_model}
+    \textit{Note.} Each point is one test-set observation. The dashed red line is the 45-degree line of perfect prediction. Dispersion around the line quantifies residual error.
+\end{figure}
 
 \begin{figure}[ht!]
     \centering
@@ -632,7 +669,7 @@ Conversely, the Support Vector Machine (SVM) achieved the highest Directional Ac
 
 The predictive efficacy of all models is fundamentally dictated by the forecasting horizon. At the 1-day horizon, the signal-to-noise ratio is exceptionally low as microstructure noise and transient retail sentiment dominate price action. All architectures exhibited poor Directional Accuracy at this short-term interval, frequently failing to outperform the naive benchmark. 
 
-Extending the forecast to a 3-day and 5-day cumulative horizon introduces a smoothing effect that exposes structural macroeconomic momentum. This extension allows the models to filter out high-frequency noise and capture the persistent directional drift driven by institutional capital flows. The superior performance of the SVM and ANN at longer horizons confirms that frontier market predictability is a low-frequency phenomenon tied to structural trend persistence rather than short-term mean reversion.
+Extending the forecast to a 3-day and 5-day cumulative horizon introduces a smoothing effect that exposes structural macroeconomic momentum. This extension allows the models to filter out high-frequency noise and capture the persistent directional drift driven by institutional capital flows. The superior performance of the SVM and ANN at longer horizons confirms that frontier market predictability is a low-frequency phenomenon tied to structural trend persistence rather than short-term mean reversion. Figure \ref{fig:horizon_decay} in the Results section documents this decay pattern visually.
 
 \subsection{Economic Interpretation of Feature Significance}
 
