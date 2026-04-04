@@ -15,6 +15,8 @@
 \usepackage{booktabs}
 \usepackage{tabularx}
 \usepackage{array}
+\usepackage{siunitx}
+\usepackage{threeparttable}
 \usepackage{listings}
 \usepackage{setspace}
 \usepackage{titlesec}
@@ -22,6 +24,7 @@
 \usepackage{indentfirst}
 \usepackage{csquotes}
 \usepackage[hidelinks]{hyperref}
+\usepackage{url}
 \usepackage[style=apa, backend=biber]{biblatex}
 \addbibresource{references.bib}
 
@@ -56,6 +59,7 @@
 \setlength{\bibhang}{0.5in}
 
 \begin{document}
+\sloppy
 \doublespacing
 \RaggedRight
 \setlength{\parindent}{0.5in}
@@ -180,7 +184,7 @@ The mathematical forecasting horizon fundamentally dictates the underlying signa
 
 The analysis draws on daily price series spanning January 2, 2019 to April 1, 2026---a final sample of 1,853 observations covering approximately 7.25 years of market activity. Historical data for the Bank of the Philippine Islands (BPI), BDO Unibank (BDO), the Philippine Stock Exchange Index (PSEi), and the USD/PHP exchange rate were manually retrieved from Investing.com. Conversely, the U.S. 10-Year Treasury Yield series was programmatically extracted from Yahoo Finance using a specialized financial modeling data interface. These series, detailed in Table \ref{tab:data_sources}, encompass the target equity, a sector-specific competitor, a broad market benchmark, and macroeconomic proxies for currency-channel risk and global capital flows.
 
-\begin{table}[h!]
+\begin{table}[ht!]
     \centering
     \caption{Summary of Data Sources and Sample Series}
     \label{tab:data_sources}
@@ -332,7 +336,7 @@ The second macroeconomic variable is the log return of the U.S. 10-Year Treasury
 
 Figure \ref{fig:macro_correlation} plots the cumulative log returns of four key series: the target asset (BPI), its sector competitor (BDO), the local market benchmark (PSEi), and the global macro baseline (U.S. 10-Year Yield). Fluctuations in the global risk-free rate trigger immediate revaluation of emerging market bank multiples. Rising yields historically exert downward pressure on banking valuations through currency-channel risk and tightening domestic liquidity. The inclusion of $r^{US10Y}_t$ forces the predictive models to distinguish between idiosyncratic domestic shocks and systemic shifts in global capital flows.
 
-\begin{figure}[h!]
+\begin{figure}[ht!]
     \centering
     \includegraphics[width=0.8\textwidth]{figures/macro_correlation.png}
     \caption{Philippine Banking Sector Performance vs. Local and Global Benchmarks}
@@ -447,9 +451,11 @@ This section reports the predictive performance of the four machine learning arc
 
 \subsection{Predictive Performance and Overfitting Assessment}
 
-\textbf{\color{red}[TODO: Carlos --- Implement script 03\_ols\_baseline.Rmd to generate the linear benchmark results. Rubric requires both a metrics table and a coefficient interpretation table.]}
+Table \ref{tab:ols_metrics} reports OLS and naïve benchmark performance across all three horizons.
 
-\textbf{\color{red}[TODO: Aaron/Keira --- Implement script 06\_evaluation.Rmd to aggregate OLS and ML results into a single integrated 5x3 matrix per metric (RMSE, MAE, R2, DA). The current separate tables are for drafting only.]}
+\input{tables/ols_metrics.tex}
+
+\textbf{\color{red}[TODO: Aaron/Keira --- Implement script 06\_evaluation.Rmd to aggregate OLS and ML results into a single integrated table. Keep this table in the main text as per professor preference, but introduce new visualizations (DA Comparison Chart, Train vs. Test Overfitting Gap) alongside it to aid interpretation.]}
 
 Tables \ref{tab:rf_xgboost_metrics} and \ref{tab:svm_ann_metrics} report the comprehensive performance metrics. To explicitly quantify overfitting, we compare in-sample (Train) and out-of-sample (Test) diagnostic variants for every model.
 
@@ -462,11 +468,15 @@ Conversely, regularized architectures such as Support Vector Machines (SVM) and 
 
 \subsection{Variable Importance and Predictive Drivers}
 
-\textbf{\color{red}[TODO: Carlos --- Once script 03 is done, include the OLS coefficient table here and interpret the primary drivers from a linear perspective. Compare this with the ML feature importance below.]}
+Table \ref{tab:ols_coefficients} reports OLS coefficient estimates with Newey-West standard errors
+for all three horizons. Predictors significant at the 10\% level represent linear channels through
+which lagged returns, technical indicators, and macro variables map to future BPI returns.
+
+\input{tables/ols_coefficients.tex}
 
 Feature importance represents the contribution of each predictor to the model's total gain or impurity reduction. Figures \ref{fig:rf_importance} and \ref{fig:xgboost_importance} visualize these rankings across the three horizons for Random Forest and XGBoost, respectively.
 
-\begin{figure}[h!]
+\begin{figure}[ht!]
     \centering
     \begin{minipage}{0.32\textwidth}
         \centering
@@ -489,7 +499,7 @@ Feature importance represents the contribution of each predictor to the model's 
 
 The importance profiles illustrate a clear transition of predictive signals as the temporal window expands. At the 1-day horizon, the target asset's own lagged return ($lag1$) and the U.S. 10-Year yield ($r\_us10y$) dominate, reflecting high-frequency sensitivity to global liquidity and autoregressive price discovery. By the 5-day horizon, structural trend indicators such as the moving-average ratio ($ma\_ratio$) assume dominance, confirming that longer-term predictions rely on persistent technical momentum rather than transient noise.
 
-\begin{figure}[h!]
+\begin{figure}[ht!]
     \centering
     \begin{minipage}{0.32\textwidth}
         \centering
@@ -516,7 +526,7 @@ XGBoost importance profiles (Figure \ref{fig:xgboost_importance}) provide a simi
 
 Scatter plots comparing predicted returns to actual realizations provide a visual diagnostic of model performance. The red dashed line ($y=x$) represents a perfect forecast.
 
-\begin{figure}[h!]
+\begin{figure}[ht!]
     \centering
     \begin{minipage}{0.32\textwidth}
         \centering
@@ -533,13 +543,13 @@ Scatter plots comparing predicted returns to actual realizations provide a visua
         \includegraphics[width=\textwidth]{figures/rf_pred_actual_5d.png}
         \caption*{5-Day Horizon}
     \end{minipage}
-    \caption{Random Forest Predicted vs. Actual Log Returns}
+    \caption{Random Forest Predicted vs. Actual Log Returns: High dispersion indicates severe overfitting and microstructure noise memorization.}
     \label{fig:rf_diag}
 \end{figure}
 
 The Random Forest diagnostics (Figure \ref{fig:rf_diag}) show a high degree of dispersion, particularly at the 1-day horizon. The clustering of points away from the diagonal line confirms the model's struggle to capture high-frequency volatility spikes. However, as the horizon expands to 5 days, a modest positive correlation becomes visible, although the dispersion remains significant.
 
-\begin{figure}[h!]
+\begin{figure}[ht!]
     \centering
     \begin{minipage}{0.32\textwidth}
         \centering
@@ -556,13 +566,13 @@ The Random Forest diagnostics (Figure \ref{fig:rf_diag}) show a high degree of d
         \includegraphics[width=\textwidth]{figures/xgboost_pred_actual_5d.png}
         \caption*{5-Day Horizon}
     \end{minipage}
-    \caption{XGBoost Predicted vs. Actual Log Returns}
+    \caption{XGBoost Predicted vs. Actual Log Returns: Regularized objective function caps extreme predictions, creating a tighter forecasting envelope.}
     \label{fig:xgb_diag}
 \end{figure}
 
 XGBoost visualizations (Figure \ref{fig:xgb_diag}) reveal a tighter forecasting envelope. The model effectively caps extreme predictions, demonstrating the impact of its regularized objective function. The 5-day horizon exhibits the most defined linear relationship, although the model tends to underestimate the magnitude of major realized price movements.
 
-\begin{figure}[h!]
+\begin{figure}[ht!]
     \centering
     \begin{minipage}{0.32\textwidth}
         \centering
@@ -579,13 +589,13 @@ XGBoost visualizations (Figure \ref{fig:xgb_diag}) reveal a tighter forecasting 
         \includegraphics[width=\textwidth]{figures/svm_pred_actual_5d.png}
         \caption*{5-Day Horizon}
     \end{minipage}
-    \caption{SVM Predicted vs. Actual Log Returns}
+    \caption{SVM Predicted vs. Actual Log Returns: The RBF kernel restricts extreme hallucinated predictions, forcing conservative clustering.}
     \label{fig:svm_diag}
 \end{figure}
 
 The SVM diagnostic (Figure \ref{fig:svm_diag}) is the most visually robust. At the 1-day horizon, the RBF kernel forces a conservative clustering around the mean, avoiding "hallucinated" volatility. By the 5-day horizon, the SVM captures the structural directional drift of BPI more consistently than its ensemble-based peers, which correlates with its superior Directional Accuracy results.
 
-\begin{figure}[h!]
+\begin{figure}[ht!]
     \centering
     \begin{minipage}{0.32\textwidth}
         \centering
@@ -602,7 +612,7 @@ The SVM diagnostic (Figure \ref{fig:svm_diag}) is the most visually robust. At t
         \includegraphics[width=\textwidth]{figures/ann_pred_actual_5d.png}
         \caption*{5-Day Horizon}
     \end{minipage}
-    \caption{ANN Predicted vs. Actual Log Returns}
+    \caption{ANN Predicted vs. Actual Log Returns: L2 weight decay restricts outliers, producing a cautious forecast aligned with realized distributions.}
     \label{fig:ann_diag}
 \end{figure}
 
@@ -655,9 +665,10 @@ This distributional shift means that patterns statistically significant in 2021 
 \appendix
 \section{Technical Implementation Code} \label{sec:appendix_code}
 {} The full source code for this analysis is available at:
-\texttt{https://github.com/sakudiff/finlyts-ml-casestudy.git}
+\url{https://github.com/sakudiff/finlyts-ml-casestudy.git}
 
 All scripts are numbered sequentially (\texttt{01} through \texttt{06}) and
 must be run in order. The dataset combines manual CSV exports for domestic series with programmatic API retrieval for global macroeconomic benchmarks. No manual data downloads are required for the global baseline.
 
 \end{document}
+ment}
