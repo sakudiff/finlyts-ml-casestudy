@@ -4,7 +4,8 @@
 **Professor:** Bobby Baylon Jr.
 **Status:** Completed — Archived
 **Completed:** April 7, 2026
-**Team:** Jehan, Aaron, Carlos, Keira
+**Group:** Group 2
+**Team:** Jehan Abril, Keira Ley Arcala Go, Aaron Joshua Estacio Sison, Carlos Martin Belangel Valencia
 
 ---
 
