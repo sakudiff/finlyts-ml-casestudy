@@ -3,6 +3,8 @@
 **Course:** FINLYTS — De La Salle University
 **Professor:** Bobby Baylon Jr.
 **Status:** Completed — Archived
+**Completed:** April 7, 2026
+**Team:** Jehan, Aaron, Carlos, Keira
 
 ---
 
