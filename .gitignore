@@ -8,13 +8,19 @@ renv/.cache/
 renv/local/
 renv/staging/
 
-# Data (raw CSVs may be large; processed outputs excluded)
-# Keep raw/ tracked only if files are under 50MB
-!*.csv
-data/processed/*.rds
-output/models/*.rds
+# RMarkdown render artifacts (keep .Rmd tracked)
+R/*.html
+*_files/
+*_cache/
 
-# LaTeX auxiliary and output files
+# Data (raw CSVs tracked; processed RDS excluded)
+data/processed/*.rds
+
+# Output models and predictions
+output/models/*.rds
+!output/.gitkeep
+
+# LaTeX auxiliary files (keep .pdf, .tex, .bib tracked)
 *.aux
 *.log
 *.out
@@ -27,14 +33,12 @@ output/models/*.rds
 *.nav
 *.snm
 *.vrb
-paper/main.bbl-SAVE-ERROR
 paper/main.bcf
-paper/main.bcf-SAVE-ERROR
 paper/main.run.xml
 
-# Output models and predictions
-output/models/*.rds
-!output/.gitkeep
+# Process artifacts
+*_pid.txt
+complete.txt
 
 # OS
 .DS_Store
