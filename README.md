@@ -1,11 +1,13 @@
 # Hybrid Econometric and Machine Learning Modeling of Philippine Stock Returns
 
-**Course:** FINLYTS — De La Salle University
-**Professor:** Bobby Baylon Jr.
-**Status:** Completed — Archived
-**Completed:** April 7, 2026
-**Group:** Group 2
-**Team:** Jehan Abril, Keira Ley Arcala Go, Aaron Joshua Estacio Sison, Carlos Martin Belangel Valencia
+| | |
+| :--- | :--- |
+| **Course** | FINLYTS — De La Salle University |
+| **Professor** | Bobby Baylon Jr. |
+| **Group** | Group 2 |
+| **Completed** | April 7, 2026 |
+
+**Team:** Jehan Abril · Keira Ley Arcala Go · Aaron Joshua Estacio Sison · Carlos Martin Belangel Valencia
 
 ---
 
