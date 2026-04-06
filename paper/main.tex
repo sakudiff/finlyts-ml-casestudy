@@ -729,12 +729,14 @@ The multi-horizon approach itself is a practical tool. Rather than selecting a s
 \label{sec:conclusion}
 % ASSIGNED TO: Keira
 
-\textbf{\color{red}[TODO: Keira --- Write the conclusion and recommendations. It must cover:]}
-\begin{itemize}
-    \item \textbf{Economic Significance:} Are the results financially meaningful? Do they align with theory (AMH vs EMH)?
-    \item \textbf{Practical Implications:} What should PSE analysts take away from this? (e.g., preference for SVM/ANN over RF).
-    \item \textbf{Limitations and Future Research:} Suggest directions like more macro variables or high-frequency data.
-\end{itemize}
+This study examined whether non-linear machine learning models can better capture adaptive inefficiencies in Philippine banking equities compared to traditional linear approaches. The results show that predictive performance is highly dependent on the forecast horizon. At the 1-day level, all models struggle due to noise and short-term randomness. However, as the horizon extends to 3-day and 5-day returns, more stable patterns emerge, leading to improved directional accuracy. Interestingly, higher model complexity does not guarantee better performance. Random Forest, despite strong in-sample results, fails out-of-sample due to overfitting, while more constrained models such as SVM and ANN perform more consistently. At the same time, the OLS benchmark remains competitive, even achieving the highest directional accuracy at the 5-day horizon, suggesting that simpler models can still be effective in low signal-to-noise environments.
+
+From a practical perspective, these findings suggest that analysts should focus less onshort-term predictions and instead prioritize slightly longer horizons where signals are more reliable. Model selection should emphasize robustness rather than complexity, with regularized approaches offering a better balance between flexibility and generalization. At the same time,linear models remain valuable, especially when interpretability is important. A combined ormulti-horizon approach may further improve decision-making by reducing dependence on any single prediction window.
+
+Despite these findings, the study has several limitations. The analysis focuses on a single stockwithin the Philippine banking sector, which may limit generalizability. The feature set, while comprehensive, does not include alternative data such as sentiment or high-frequency indicators that may contain additional predictive information. In addition, real-world trading factors such as transaction costs and liquidity constraints are not incorporated, meaning that statistical performance may not directly translate to economic profitability. Future research can address these limitations by expanding the dataset across multiple assets, incorporating adaptive or regime-switching models, and integrating alternative data sources. Evaluating actual trading strategies under realistic market conditions would also provide a more complete assessment of the models' practical value.
+
+Overall, the results suggest that in financial prediction, more complex models are not necessarily better. Instead, approaches that are well-regularized and aligned with the structure of the data tend to perform more reliably, especially in non-stationary market environments.
+
 
 % REFERENCES
 \printbibliography[title={References}]
