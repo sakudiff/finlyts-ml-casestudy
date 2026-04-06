@@ -1,8 +1,9 @@
 \begin{table}[!ht]
 \centering
-\caption{\label{tab:descriptive_stats}Descriptive Statistics: Target Variables and Key Features (2019--2026)}
+\caption{Descriptive Statistics: Target Variables and Key Features (2019--2026)}
 \footnotesize
-\setlength{\tabcolsep}{5pt}
+\setlength{\tabcolsep}{4pt}
+\resizebox{\linewidth}{!}{%
 \begin{tabular}{lrrrrrr}
 \toprule
 Variable & Mean & SD & Min & Max & Skewness & Ex. Kurtosis\\
@@ -20,5 +21,6 @@ $r^{US10Y}_t$ (US 10Y return) & 0.0002 & 0.0279 & -0.3470 & 0.4048 & 0.3341 & 45
 $HiVol_t$ (regime dummy) & 0.0218 & 0.1462 & 0.0000 & 1.0000 & 6.5380 & 40.7607\\
 \bottomrule
 \multicolumn{7}{p{\linewidth}}{\rule{0pt}{1em}\textit{Note.} Sample: January 2, 2019 to April 1, 2026 (2609 observations after initialization window removal). Ex. Kurtosis is excess kurtosis (0 for normal distribution). All returns are daily log returns.}\\
-\end{tabular}
+\end{tabular}%
+}
 \end{table}

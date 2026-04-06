@@ -4,6 +4,7 @@
 \label{tab:ols_metrics}
 \footnotesize
 \setlength{\tabcolsep}{3.5pt}
+\resizebox{\linewidth}{!}{%
 \begin{tabular}{llrrrrrrrrr}
 \toprule
 Model & Horizon & RMSE & MAE & $R^2$ & DA & Naive DA & Train RMSE & Train MAE & Train $R^2$ & Train DA\\
@@ -15,7 +16,8 @@ OLS & 1d & 0.01655 & 0.01052 & -0.01272 & 0.33142 & 0.26628 & 0.01606 & 0.01003 
 OLS & 3d & 0.02660 & 0.01979 & -0.01216 & 0.49042 & 0.31609 & 0.02545 & 0.01813 & 0.05167 & 0.53091\\
 OLS & 5d & 0.03333 & 0.02562 & -0.05211 & 0.51149 & 0.29693 & 0.03168 & 0.02309 & 0.07976 & 0.55918\\
 \bottomrule
-\end{tabular}
+\end{tabular}%
+}
 \begin{tablenotes}
 \footnotesize
 \item \textit{Note.} DA = Directional Accuracy (fraction of test-set observations where the predicted sign matches the realised sign). Naive benchmark uses the previous day's BPI log return (lag1) as prediction. $R^2$ is out-of-sample and may be negative if the model performs worse than the mean. OLS standard errors are Newey-West HAC with 5 lags.

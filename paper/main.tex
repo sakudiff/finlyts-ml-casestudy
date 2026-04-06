@@ -131,17 +131,9 @@ This study evaluates the predictive performance of traditional econometric and m
 \label{sec:intro}
 % ASSIGNED TO: Jehan
 
-\textbf{\color{red}[TODO: Jehan --- Restructure the introduction to strictly follow the Narrative Map required by the rubric:]}
-\begin{enumerate}
-    \item \textbf{The Problem Statement:} Identify the specific knowledge gap in PSE return predictability.
-    \item \textbf{Prior Work:} What else has been tried? (Survey of ML in ASEAN/Frontier markets).
-    \item \textbf{The Gap:} Use "Nevertheless..." or "However..." to identify where prior work falls short (e.g., multi-horizon focus, macro integration).
-    \item \textbf{The Departure:} "In this paper we will..." - Justify the BPI/BDO selection based on liquidity, relevance, and systemic importance.
-\end{enumerate}
 
 The Philippine Stock Exchange (PSE) has proven to be inefficient in terms of adaptivity and shifting volatility regimes \parencite{ahmed2022adaptive}. Consequently, daily stock return prediction has remained a considerable challenge in the PSE. Considering this, static linear assumptions are structurally incapable of capturing regime-dependent non-linear dynamics that determine price formation in the Philippine market. Thus, presenting a critical gap in knowledge in terms of return predictability for the PSE. Especially for systemically important equities within the banking sector.
 
-\textbf{\color{red}[Prior Work]}
 An increasing amount of empirical literature has investigated the use of machine learning techniques in ASEAN equity markets, finding significant gains in forecasting performance over standard econometric models. According to prior studies on the ASEAN-5 economies, it has been demonstrated that algorithms like Random Forest, Support Vector Machines, and ensemble boosting methodologies may predict stock index movements with accuracy with some models, such as AdaBoost, commonly perform better than traditional methods (Shaik et al., 2024). Similarly, Jayasuriya (2019) discussed that data from cross-national ASEAN assessments shows that machine learning frameworks, especially Artificial Neural Networks, outperform linear regression models in terms of predicting accuracy, with reported performance levels surpassing 90% in certain instances. Additionally, further research using Southeast Asian datasets demonstrates the adaptability of non-linear approaches in emerging market contexts by providing evidence that even relatively straightforward machine learning models, like Support Vector Machines, are capable of outperforming conventional statistical techniques when forecasting market metrics (Chaengkham & Wianwiwat, 2021).
 
 Beyond ASEAN markets, foregoing studies on frontier economies provide support to the utilization of machine learning in circumstances marked by increased volatility, lower liquidity, and structural inefficiencies. According to Chowdhurry et al. (2020), machine learning methods are better suited to capturing intricate, non-linear patterns in such data sets, while traditional financial models frequently fail because of missing or unstable parameters. Akter et al. (2022) claims that the difficulties of extremely volatile frontier market data have led to the development of sophisticated architectures, such as stacking ensembles and deep learning models, which show better forecast accuracy than both traditional econometric and independent machine learning models. Cross-regional studies from various frontier and emerging countries, particularly Africa, demonstrates that machine learning algorithms may correctly forecast financial crises, volatility regimes, and return dynamics by combining macroeconomic and sentiment-based factors (Naeem et al., 2024). However, despite these developments, Bustos et al. (2025) further highlights limitations such as overfitting, unpredictable out-of-sample performance, and uncertainty across market regimes, indicating that model design and data structure continue to have a significant impact on prediction success. These findings highlight the necessity for hybrid and context-specific modeling frameworks by establishing machine learning as a highly effective yet flawed technique in frontier market forecasting.
@@ -377,7 +369,7 @@ All features described in this section are constructed strictly from information
 
 Table~\ref{tab:descriptive_stats} reports summary statistics for the three target return series and a representative selection of constructed features, computed over the full sample from January 2, 2019 to April 1, 2026. Statistics include the sample mean, standard deviation, minimum, maximum, skewness, and excess kurtosis. As is typical for daily equity log returns, the target distributions are expected to exhibit near-zero means, substantial excess kurtosis relative to the normal distribution, and modest negative skewness reflecting asymmetric downside risk.
 
-\input{tables/descriptive_stats.tex}
+\input{tables/descriptive_stats.tex}\label{tab:descriptive_stats}
 
 
 % SECTION 4: METHODOLOGY
