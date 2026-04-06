@@ -2,10 +2,10 @@
 
 | | |
 | :--- | :--- |
-| **Course** | FINLYTS — De La Salle University |
+| **Course** | FINLYTS K32 — De La Salle University |
 | **Professor** | Bobby Baylon Jr. |
 | **Group** | Group 2 |
-| **Completed** | April 7, 2026 |
+| **Completed** | April 7, 2026 — Term 2, AY 2025–2026 |
 
 **Team:** Jehan Abril · Keira Ley Arcala Go · Aaron Joshua Estacio Sison · Carlos Martin Belangel Valencia
 
