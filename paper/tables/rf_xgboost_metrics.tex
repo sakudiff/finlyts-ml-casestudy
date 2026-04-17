@@ -8,12 +8,12 @@
 \toprule
 Model & Horizon & RMSE & MAE & R2 & DA & Naive DA & Train RMSE & Train MAE & Train R2 & Train DA\\
 \midrule
-Random Forest & 1d & 0.01678 & 0.01120 & -0.06034 & 0.28952 & 0.27619 & 0.01454 & 0.00959 & 0.20721 & 0.43899\\
-Random Forest & 3d & 0.02716 & 0.02037 & -0.06425 & 0.46667 & 0.32000 & 0.02298 & 0.01694 & 0.22610 & 0.61392\\
-Random Forest & 5d & 0.03360 & 0.02613 & -0.07917 & 0.48381 & 0.30286 & 0.02757 & 0.02070 & 0.30144 & 0.65300\\
-XGBoost & 1d & 0.01631 & 0.00998 & -0.00099 & 0.27810 & 0.27619 & 0.01610 & 0.00964 & 0.02776 & 0.34080\\
-XGBoost & 3d & 0.02649 & 0.01923 & -0.01265 & 0.45333 & 0.32000 & 0.02533 & 0.01811 & 0.05925 & 0.48141\\
-XGBoost & 5d & 0.03262 & 0.02470 & -0.01734 & 0.48190 & 0.30286 & 0.03049 & 0.02218 & 0.14607 & 0.57436\\
+Random Forest & 1d & 0.01660 & 0.01065 & -0.03685 & 0.34095 & 0.27619 & 0.00903 & 0.00550 & 0.69418 & 0.60486\\
+Random Forest & 3d & 0.02698 & 0.01978 & -0.05024 & 0.50095 & 0.32000 & 0.01537 & 0.01118 & 0.65356 & 0.82984\\
+Random Forest & 5d & 0.03333 & 0.02579 & -0.06204 & 0.47238 & 0.30286 & 0.01817 & 0.01317 & 0.69659 & 0.87750\\
+XGBoost & 1d & 0.01632 & 0.00974 & -0.00288 & 0.28571 & 0.27619 & 0.01633 & 0.00954 & 0.00000 & 0.31888\\
+XGBoost & 3d & 0.02653 & 0.01923 & -0.01508 & 0.52190 & 0.32000 & 0.02349 & 0.01677 & 0.19113 & 0.66635\\
+XGBoost & 5d & 0.03271 & 0.02481 & -0.02306 & 0.44190 & 0.30286 & 0.03183 & 0.02304 & 0.06882 & 0.50763\\
 \bottomrule
 \end{tabular}
 \multicolumn{11}{p{\linewidth}}{\rule{0pt}{1em}\textit{Note.} DA = Directional Accuracy (fraction of test-set observations where the predicted sign matches the realised sign). Naive DA uses the previous day's return (lag1) as the prediction. R2 is out-of-sample and may be negative if the model performs worse than the mean.}\\

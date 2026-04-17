@@ -8,12 +8,12 @@
 \toprule
 Model & Horizon & RMSE & MAE & R2 & DA & Naive DA & Train RMSE & Train MAE & Train R2 & Train DA\\
 \midrule
-SVM & 1d & 0.01634 & 0.00997 & -0.00438 & 0.32000 & 0.27619 & 0.01613 & 0.00958 & 0.02415 & 0.37226\\
-SVM & 3d & 0.02621 & 0.01903 & 0.00924 & 0.48000 & 0.32000 & 0.02583 & 0.01804 & 0.02169 & 0.54433\\
-SVM & 5d & 0.03253 & 0.02472 & -0.01163 & 0.48190 & 0.30286 & 0.03245 & 0.02291 & 0.03246 & 0.55195\\
-ANN & 1d & 0.01628 & 0.00991 & 0.00199 & 0.34667 & 0.27619 & 0.01619 & 0.00970 & 0.01636 & 0.35367\\
-ANN & 3d & 0.02634 & 0.01934 & -0.00080 & 0.46857 & 0.32000 & 0.02562 & 0.01808 & 0.03802 & 0.53670\\
-ANN & 5d & 0.03275 & 0.02491 & -0.02529 & 0.48190 & 0.30286 & 0.03203 & 0.02308 & 0.05758 & 0.56149\\
+SVM & 1d & 0.01634 & 0.00998 & -0.00505 & 0.32000 & 0.27619 & 0.01613 & 0.00958 & 0.02435 & 0.37417\\
+SVM & 3d & 0.02620 & 0.01903 & 0.00953 & 0.49143 & 0.32000 & 0.02583 & 0.01804 & 0.02167 & 0.54385\\
+SVM & 5d & 0.03256 & 0.02473 & -0.01350 & 0.47619 & 0.30286 & 0.03245 & 0.02291 & 0.03245 & 0.55338\\
+ANN & 1d & 0.01629 & 0.00993 & 0.00130 & 0.34286 & 0.27619 & 0.01619 & 0.00971 & 0.01722 & 0.35462\\
+ANN & 3d & 0.02636 & 0.01936 & -0.00242 & 0.46476 & 0.32000 & 0.02561 & 0.01808 & 0.03840 & 0.53527\\
+ANN & 5d & 0.03278 & 0.02494 & -0.02718 & 0.47619 & 0.30286 & 0.03202 & 0.02308 & 0.05783 & 0.56196\\
 \bottomrule
 \end{tabular}
 \multicolumn{11}{p{\linewidth}}{\rule{0pt}{1em}\textit{Note.} DA = Directional Accuracy (fraction of test-set observations where the predicted sign matches the realised sign). Naive DA uses the previous day's return (lag1) as the prediction. R2 is out-of-sample and may be negative if the model performs worse than the mean. SVM features are normalised inside the workflow (zero mean, unit variance). ANN uses logistic hidden-unit activation and L2 weight decay via the nnet engine.}\\
