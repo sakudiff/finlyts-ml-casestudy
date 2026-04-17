@@ -1,131 +1,116 @@
-\begin{table}[!ht]
+\begin{sidewaystable}[p]
 \centering
-\begin{threeparttable}
 \caption{OLS Coefficient Estimates: 1-Day Horizon}
 \label{tab:ols_coef_1d}
-\resizebox{\linewidth}{!}{%
-\begin{tabular}{l r r r l}
+\footnotesize
+\setlength{\tabcolsep}{6pt}
+\begin{tabular*}{\linewidth}{@{\extracolsep{\fill}} l r r r l}
 \toprule
 Predictor & Est. & SE & $t$ & Sig. \\
 \midrule
-Intercept & 0.2717 & 0.2115 & 1.2845 &  \\
-r\_bpi & -0.2100 & 0.0771 & -2.7220 & *** \\
-r\_bdo & 0.0375 & 0.0298 & 1.2554 &  \\
-r\_psei & 0.0183 & 0.0660 & 0.2769 &  \\
-r\_fx & -0.2137 & 0.1446 & -1.4774 &  \\
-r\_us10y & 0.0014 & 0.0238 & 0.0570 &  \\
-ema12 & -0.0002 & 0.0023 & -0.0904 &  \\
-ema26 & 0.0002 & 0.0023 & 0.0848 &  \\
-ma\_ratio & -0.2723 & 0.2096 & -1.2995 &  \\
-lag1 & -0.2201 & 0.0803 & -2.7412 & *** \\
-lag2 & -0.0505 & 0.0577 & -0.8752 &  \\
-lag3 & -0.0565 & 0.0431 & -1.3104 &  \\
-mom5 & 0.0657 & 0.0351 & 1.8711 & * \\
-mom10 & -0.0370 & 0.0247 & -1.5006 &  \\
-rsi14 & 0.0001 & 0.0001 & 0.5523 &  \\
-macd & 0.0129 & 0.0127 & 1.0195 &  \\
-macd\_signal & -0.0103 & 0.0091 & -1.1384 &  \\
-vol5 & 0.2034 & 0.3631 & 0.5601 &  \\
-vol10 & -0.2077 & 0.2751 & -0.7548 &  \\
-vol\_ratio & -0.0018 & 0.0038 & -0.4867 &  \\
-lag\_psei & 0.1262 & 0.0578 & 2.1835 & ** \\
-interact & 0.5690 & 2.8459 & 0.1999 &  \\
-vol5\_sq & 1.1251 & 3.7889 & 0.2970 &  \\
-hi\_vol & -0.0054 & 0.0048 & -1.1285 &  \\
+Intercept & 0.2751 & 0.2095 & 1.3132 &  \\
+r\_bpi & -0.2116 & 0.0763 & -2.7725 & *** \\
+r\_bdo & 0.0375 & 0.0297 & 1.2591 &  \\
+r\_psei & 0.0200 & 0.0659 & 0.3039 &  \\
+r\_fx & -0.2271 & 0.1438 & -1.5792 &  \\
+r\_us10y & 0.0012 & 0.0238 & 0.0514 &  \\
+ema12 & -0.0002 & 0.0023 & -0.0708 &  \\
+ema26 & 0.0002 & 0.0023 & 0.0658 &  \\
+ma\_ratio & -0.2758 & 0.2075 & -1.3288 &  \\
+lag1 & -0.2200 & 0.0801 & -2.7464 & *** \\
+lag2 & -0.0500 & 0.0571 & -0.8767 &  \\
+lag3 & -0.0573 & 0.0426 & -1.3445 &  \\
+mom5 & 0.0659 & 0.0348 & 1.8924 & * \\
+mom10 & -0.0382 & 0.0247 & -1.5474 &  \\
+rsi14 & 0.0001 & 0.0001 & 0.5145 &  \\
+macd & 0.0131 & 0.0125 & 1.0449 &  \\
+macd\_signal & -0.0105 & 0.0090 & -1.1646 &  \\
+vol5 & 0.2058 & 0.3608 & 0.5705 &  \\
+vol10 & -0.2046 & 0.2730 & -0.7496 &  \\
+vol\_ratio & -0.0017 & 0.0037 & -0.4543 &  \\
+lag\_psei & 0.1239 & 0.0576 & 2.1526 & ** \\
+interact & 0.5945 & 2.8434 & 0.2091 &  \\
+vol5\_sq & 1.0590 & 3.7745 & 0.2806 &  \\
+hi\_vol & -0.0054 & 0.0048 & -1.1214 &  \\
 \bottomrule
-\end{tabular}%
-}
-\begin{tablenotes}
-\footnotesize
-\item \textit{Note.} Newey-West HAC standard errors with 5 lags. Significance codes: *** $p < 0.01$, ** $p < 0.05$, * $p < 0.10$. Predictors ma5, ma10, ma20, and vol20 excluded to mitigate multicollinearity (see VIF diagnostic). Training period: 2087 observations.
-\end{tablenotes}
-\end{threeparttable}
-\end{table}
+\end{tabular*}
+\multicolumn{5}{p{\linewidth}}{\rule{0pt}{1em}\textit{Note.} Newey-West HAC standard errors with 5 lags. Significance codes: *** $p < 0.01$, ** $p < 0.05$, * $p < 0.10$. Predictors ma5, ma10, ma20, and vol20 excluded to mitigate multicollinearity (see VIF diagnostic). Training period: 2098 observations.}\\
+\end{sidewaystable}
 
-\begin{table}[!ht]
+\begin{sidewaystable}[p]
 \centering
-\begin{threeparttable}
 \caption{OLS Coefficient Estimates: 3-Day Horizon}
 \label{tab:ols_coef_3d}
-\resizebox{\linewidth}{!}{%
-\begin{tabular}{l r r r l}
+\footnotesize
+\setlength{\tabcolsep}{6pt}
+\begin{tabular*}{\linewidth}{@{\extracolsep{\fill}} l r r r l}
 \toprule
 Predictor & Est. & SE & $t$ & Sig. \\
 \midrule
-Intercept & 0.5580 & 0.4141 & 1.3475 &  \\
-r\_bpi & -0.4201 & 0.1265 & -3.3208 & *** \\
-r\_bdo & 0.0039 & 0.0466 & 0.0840 &  \\
-r\_psei & 0.1954 & 0.1191 & 1.6409 &  \\
-r\_fx & -0.3470 & 0.2048 & -1.6944 & * \\
-r\_us10y & 0.0482 & 0.0352 & 1.3708 &  \\
-ema12 & -0.0002 & 0.0054 & -0.0302 &  \\
-ema26 & 0.0001 & 0.0054 & 0.0190 &  \\
-ma\_ratio & -0.5692 & 0.4091 & -1.3913 &  \\
-lag1 & -0.4957 & 0.1431 & -3.4638 & *** \\
-lag2 & -0.1771 & 0.1065 & -1.6635 & * \\
-lag3 & -0.1777 & 0.0682 & -2.6064 & *** \\
-mom5 & -0.0082 & 0.0334 & -0.2471 &  \\
-mom10 & 0.0099 & 0.0335 & 0.2964 &  \\
-rsi14 & 0.0004 & 0.0004 & 1.0986 &  \\
-macd & 0.0221 & 0.0255 & 0.8666 &  \\
-macd\_signal & -0.0188 & 0.0180 & -1.0430 &  \\
-vol5 & 1.1875 & 0.6428 & 1.8473 & * \\
-vol10 & -0.7281 & 0.4890 & -1.4890 &  \\
-vol\_ratio & -0.0066 & 0.0068 & -0.9676 &  \\
-lag\_psei & 0.2184 & 0.0845 & 2.5828 & *** \\
-interact & 5.1205 & 2.4254 & 2.1112 & ** \\
-vol5\_sq & -14.1121 & 6.7826 & -2.0806 & ** \\
-hi\_vol & -0.0068 & 0.0090 & -0.7575 &  \\
+Intercept & 0.5794 & 0.4096 & 1.4144 &  \\
+r\_bpi & -0.4223 & 0.1253 & -3.3702 & *** \\
+r\_bdo & 0.0028 & 0.0466 & 0.0595 &  \\
+r\_psei & 0.1954 & 0.1190 & 1.6424 &  \\
+r\_fx & -0.3267 & 0.2028 & -1.6103 &  \\
+r\_us10y & 0.0482 & 0.0351 & 1.3724 &  \\
+ema12 & 0.0001 & 0.0052 & 0.0131 &  \\
+ema26 & -0.0001 & 0.0053 & -0.0235 &  \\
+ma\_ratio & -0.5909 & 0.4047 & -1.4600 &  \\
+lag1 & -0.4993 & 0.1420 & -3.5170 & *** \\
+lag2 & -0.1828 & 0.1052 & -1.7368 & * \\
+lag3 & -0.1818 & 0.0674 & -2.6979 & *** \\
+mom5 & -0.0089 & 0.0332 & -0.2689 &  \\
+mom10 & 0.0091 & 0.0335 & 0.2721 &  \\
+rsi14 & 0.0004 & 0.0004 & 1.0944 &  \\
+macd & 0.0230 & 0.0252 & 0.9115 &  \\
+macd\_signal & -0.0196 & 0.0179 & -1.0973 &  \\
+vol5 & 1.1892 & 0.6393 & 1.8602 & * \\
+vol10 & -0.7352 & 0.4856 & -1.5142 &  \\
+vol\_ratio & -0.0066 & 0.0068 & -0.9710 &  \\
+lag\_psei & 0.2161 & 0.0843 & 2.5627 & ** \\
+interact & 5.1011 & 2.4274 & 2.1015 & ** \\
+vol5\_sq & -14.0670 & 6.7709 & -2.0776 & ** \\
+hi\_vol & -0.0067 & 0.0090 & -0.7474 &  \\
 \bottomrule
-\end{tabular}%
-}
-\begin{tablenotes}
-\footnotesize
-\item \textit{Note.} Newey-West HAC standard errors with 5 lags. Significance codes: *** $p < 0.01$, ** $p < 0.05$, * $p < 0.10$. Predictors ma5, ma10, ma20, and vol20 excluded to mitigate multicollinearity (see VIF diagnostic). Training period: 2087 observations.
-\end{tablenotes}
-\end{threeparttable}
-\end{table}
+\end{tabular*}
+\multicolumn{5}{p{\linewidth}}{\rule{0pt}{1em}\textit{Note.} Newey-West HAC standard errors with 5 lags. Significance codes: *** $p < 0.01$, ** $p < 0.05$, * $p < 0.10$. Predictors ma5, ma10, ma20, and vol20 excluded to mitigate multicollinearity (see VIF diagnostic). Training period: 2098 observations.}\\
+\end{sidewaystable}
 
-\begin{table}[!ht]
+\begin{sidewaystable}[p]
 \centering
-\begin{threeparttable}
 \caption{OLS Coefficient Estimates: 5-Day Horizon}
 \label{tab:ols_coef_5d}
-\resizebox{\linewidth}{!}{%
-\begin{tabular}{l r r r l}
+\footnotesize
+\setlength{\tabcolsep}{6pt}
+\begin{tabular*}{\linewidth}{@{\extracolsep{\fill}} l r r r l}
 \toprule
 Predictor & Est. & SE & $t$ & Sig. \\
 \midrule
-Intercept & 0.9631 & 0.5063 & 1.9023 & * \\
-r\_bpi & -0.6977 & 0.1789 & -3.8999 & *** \\
-r\_bdo & 0.0519 & 0.0500 & 1.0386 &  \\
-r\_psei & 0.2544 & 0.1342 & 1.8960 & * \\
-r\_fx & -0.6716 & 0.2328 & -2.8851 & *** \\
-r\_us10y & 0.0217 & 0.0423 & 0.5128 &  \\
-ema12 & -0.0017 & 0.0075 & -0.2295 &  \\
-ema26 & 0.0016 & 0.0075 & 0.2168 &  \\
-ma\_ratio & -0.9829 & 0.5010 & -1.9619 & ** \\
-lag1 & -0.7068 & 0.1941 & -3.6416 & *** \\
-lag2 & -0.2869 & 0.1319 & -2.1746 & ** \\
-lag3 & -0.1854 & 0.0797 & -2.3274 & ** \\
-mom5 & 0.0162 & 0.0452 & 0.3592 &  \\
-mom10 & -0.0091 & 0.0412 & -0.2204 &  \\
-rsi14 & 0.0009 & 0.0005 & 1.6358 &  \\
-macd & 0.0380 & 0.0303 & 1.2540 &  \\
-macd\_signal & -0.0315 & 0.0216 & -1.4605 &  \\
-vol5 & 2.5249 & 0.9218 & 2.7390 & *** \\
-vol10 & -1.6255 & 0.6715 & -2.4208 & ** \\
-vol\_ratio & -0.0185 & 0.0092 & -2.0150 & ** \\
-lag\_psei & 0.3377 & 0.1109 & 3.0468 & *** \\
-interact & 1.9876 & 4.6469 & 0.4277 &  \\
-vol5\_sq & -29.5341 & 11.0208 & -2.6798 & *** \\
-hi\_vol & -0.0029 & 0.0113 & -0.2597 &  \\
+Intercept & 0.9864 & 0.5008 & 1.9697 & ** \\
+r\_bpi & -0.7024 & 0.1770 & -3.9677 & *** \\
+r\_bdo & 0.0507 & 0.0499 & 1.0148 &  \\
+r\_psei & 0.2533 & 0.1341 & 1.8893 & * \\
+r\_fx & -0.6501 & 0.2307 & -2.8175 & *** \\
+r\_us10y & 0.0220 & 0.0423 & 0.5189 &  \\
+ema12 & -0.0014 & 0.0073 & -0.1979 &  \\
+ema26 & 0.0014 & 0.0073 & 0.1857 &  \\
+ma\_ratio & -1.0067 & 0.4955 & -2.0316 & ** \\
+lag1 & -0.7140 & 0.1929 & -3.7005 & *** \\
+lag2 & -0.2940 & 0.1304 & -2.2546 & ** \\
+lag3 & -0.1897 & 0.0788 & -2.4093 & ** \\
+mom5 & 0.0162 & 0.0449 & 0.3615 &  \\
+mom10 & -0.0095 & 0.0411 & -0.2297 &  \\
+rsi14 & 0.0009 & 0.0005 & 1.6373 &  \\
+macd & 0.0389 & 0.0299 & 1.3022 &  \\
+macd\_signal & -0.0324 & 0.0214 & -1.5151 &  \\
+vol5 & 2.5081 & 0.9185 & 2.7306 & *** \\
+vol10 & -1.6193 & 0.6672 & -2.4268 & ** \\
+vol\_ratio & -0.0184 & 0.0092 & -2.0096 & ** \\
+lag\_psei & 0.3355 & 0.1103 & 3.0417 & *** \\
+interact & 2.0006 & 4.6499 & 0.4303 &  \\
+vol5\_sq & -29.3884 & 11.0272 & -2.6651 & *** \\
+hi\_vol & -0.0029 & 0.0113 & -0.2554 &  \\
 \bottomrule
-\end{tabular}%
-}
-\begin{tablenotes}
-\footnotesize
-\item \textit{Note.} Newey-West HAC standard errors with 5 lags. Significance codes: *** $p < 0.01$, ** $p < 0.05$, * $p < 0.10$. Predictors ma5, ma10, ma20, and vol20 excluded to mitigate multicollinearity (see VIF diagnostic). Training period: 2087 observations.
-\end{tablenotes}
-\end{threeparttable}
-\end{table}
+\end{tabular*}
+\multicolumn{5}{p{\linewidth}}{\rule{0pt}{1em}\textit{Note.} Newey-West HAC standard errors with 5 lags. Significance codes: *** $p < 0.01$, ** $p < 0.05$, * $p < 0.10$. Predictors ma5, ma10, ma20, and vol20 excluded to mitigate multicollinearity (see VIF diagnostic). Training period: 2098 observations.}\\
+\end{sidewaystable}

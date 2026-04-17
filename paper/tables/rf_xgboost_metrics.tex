@@ -3,19 +3,19 @@
 \caption{\label{tab:rf_xgboost_metrics}Random Forest and XGBoost: Out-of-Sample Performance by Horizon}
 \footnotesize
 \setlength{\tabcolsep}{3.5pt}
-\resizebox{\linewidth}{!}{%
+
 \begin{tabular}{llrrrrrrrrr}
 \toprule
 Model & Horizon & RMSE & MAE & R2 & DA & Naive DA & Train RMSE & Train MAE & Train R2 & Train DA\\
 \midrule
-Random Forest & 1d & 0.01962 & 0.01444 & -0.01379 & 0.43666 & 0.42857 & 0.01032 & 0.00709 & 0.71530 & 0.83198\\
-Random Forest & 3d & 0.03007 & 0.02362 & -0.06250 & 0.47439 & 0.41509 & 0.01881 & 0.01374 & 0.61659 & 0.86437\\
-Random Forest & 5d & 0.03791 & 0.02959 & -0.13427 & 0.47170 & 0.42857 & 0.01741 & 0.01265 & 0.78354 & 0.91296\\
-XGBoost & 1d & 0.01942 & 0.01379 & 0.00759 & 0.40431 & 0.42857 & 0.01875 & 0.01302 & 0.05931 & 0.51754\\
-XGBoost & 3d & 0.02924 & 0.02255 & -0.00499 & 0.45822 & 0.41509 & 0.02902 & 0.02098 & 0.08794 & 0.52429\\
-XGBoost & 5d & 0.03618 & 0.02818 & -0.03306 & 0.46361 & 0.42857 & 0.03253 & 0.02390 & 0.24441 & 0.69096\\
+Random Forest & 1d & 0.01678 & 0.01120 & -0.06034 & 0.28952 & 0.27619 & 0.01454 & 0.00959 & 0.20721 & 0.43899\\
+Random Forest & 3d & 0.02716 & 0.02037 & -0.06425 & 0.46667 & 0.32000 & 0.02298 & 0.01694 & 0.22610 & 0.61392\\
+Random Forest & 5d & 0.03360 & 0.02613 & -0.07917 & 0.48381 & 0.30286 & 0.02757 & 0.02070 & 0.30144 & 0.65300\\
+XGBoost & 1d & 0.01631 & 0.00998 & -0.00099 & 0.27810 & 0.27619 & 0.01610 & 0.00964 & 0.02776 & 0.34080\\
+XGBoost & 3d & 0.02649 & 0.01923 & -0.01265 & 0.45333 & 0.32000 & 0.02533 & 0.01811 & 0.05925 & 0.48141\\
+XGBoost & 5d & 0.03262 & 0.02470 & -0.01734 & 0.48190 & 0.30286 & 0.03049 & 0.02218 & 0.14607 & 0.57436\\
 \bottomrule
+\end{tabular}
 \multicolumn{11}{p{\linewidth}}{\rule{0pt}{1em}\textit{Note.} DA = Directional Accuracy (fraction of test-set observations where the predicted sign matches the realised sign). Naive DA uses the previous day's return (lag1) as the prediction. R2 is out-of-sample and may be negative if the model performs worse than the mean.}\\
-\end{tabular}%
-}
+\end{tabular}
 \end{table}

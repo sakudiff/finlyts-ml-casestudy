@@ -3,19 +3,19 @@
 \caption{\label{tab:svm_ann_metrics}SVM and ANN: Out-of-Sample Performance by Horizon}
 \footnotesize
 \setlength{\tabcolsep}{3.5pt}
-\resizebox{\linewidth}{!}{%
+
 \begin{tabular}{llrrrrrrrrr}
 \toprule
 Model & Horizon & RMSE & MAE & R2 & DA & Naive DA & Train RMSE & Train MAE & Train R2 & Train DA\\
 \midrule
-SVM & 1d & 0.01647 & 0.01011 & -0.00330 & 0.32759 & 0.26628 & 0.01612 & 0.00957 & 0.02389 & 0.37183\\
-SVM & 3d & 0.02634 & 0.01931 & 0.00733 & 0.48851 & 0.31609 & 0.02585 & 0.01805 & 0.02173 & 0.54432\\
-SVM & 5d & 0.03271 & 0.02507 & -0.01367 & 0.49042 & 0.29693 & 0.03249 & 0.02292 & 0.03220 & 0.55199\\
-ANN & 1d & 0.01641 & 0.01004 & 0.00342 & 0.35824 & 0.26628 & 0.01618 & 0.00968 & 0.01591 & 0.35266\\
-ANN & 3d & 0.02647 & 0.01959 & -0.00211 & 0.47510 & 0.31609 & 0.02564 & 0.01808 & 0.03802 & 0.53713\\
-ANN & 5d & 0.03291 & 0.02522 & -0.02584 & 0.49234 & 0.29693 & 0.03206 & 0.02309 & 0.05742 & 0.56109\\
+SVM & 1d & 0.01634 & 0.00997 & -0.00438 & 0.32000 & 0.27619 & 0.01613 & 0.00958 & 0.02415 & 0.37226\\
+SVM & 3d & 0.02621 & 0.01903 & 0.00924 & 0.48000 & 0.32000 & 0.02583 & 0.01804 & 0.02169 & 0.54433\\
+SVM & 5d & 0.03253 & 0.02472 & -0.01163 & 0.48190 & 0.30286 & 0.03245 & 0.02291 & 0.03246 & 0.55195\\
+ANN & 1d & 0.01628 & 0.00991 & 0.00199 & 0.34667 & 0.27619 & 0.01619 & 0.00970 & 0.01636 & 0.35367\\
+ANN & 3d & 0.02634 & 0.01934 & -0.00080 & 0.46857 & 0.32000 & 0.02562 & 0.01808 & 0.03802 & 0.53670\\
+ANN & 5d & 0.03275 & 0.02491 & -0.02529 & 0.48190 & 0.30286 & 0.03203 & 0.02308 & 0.05758 & 0.56149\\
 \bottomrule
+\end{tabular}
 \multicolumn{11}{p{\linewidth}}{\rule{0pt}{1em}\textit{Note.} DA = Directional Accuracy (fraction of test-set observations where the predicted sign matches the realised sign). Naive DA uses the previous day's return (lag1) as the prediction. R2 is out-of-sample and may be negative if the model performs worse than the mean. SVM features are normalised inside the workflow (zero mean, unit variance). ANN uses logistic hidden-unit activation and L2 weight decay via the nnet engine.}\\
-\end{tabular}%
-}
+\end{tabular}
 \end{table}

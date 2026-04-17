@@ -26,6 +26,7 @@
 \usepackage{rotating}
 \usepackage[hidelinks]{hyperref}
 \usepackage{url}
+\usepackage{pdfpages}
 \usepackage[style=apa, backend=biber]{biblatex}
 \addbibresource{references.bib}
 
@@ -743,12 +744,55 @@ Overall, the results suggest that in financial prediction, more complex models a
 
 \newpage
 \appendix
-\section{Technical Implementation Code} \label{sec:appendix_code}
-{} The full source code for this analysis is available at:
-\url{https://github.com/sakudiff/finlyts-ml-casestudy.git}
 
-All scripts are numbered sequentially (\texttt{01} through \texttt{06}) and
-must be run in order. The dataset combines manual CSV exports for domestic series with programmatic API retrieval for global macroeconomic benchmarks. No manual data downloads are required for the global baseline.
+% ============================================================
+%  APPENDIX B — Executed R Notebooks (Code + Output)
+% ============================================================
+\newpage
+\section{Executed R Notebooks} \label{sec:appendix_notebooks}
+
+The following pages reproduce each of the six analytical R Markdown notebooks
+as rendered PDF documents, showing every code chunk together with its live
+console output, tables, and figures exactly as produced during the final
+pipeline run.  The notebooks are presented in execution order; each begins on
+a fresh page and retains its own table of contents for navigation.
+The complete source repository, including all scripts and data, is publicly
+available at \url{https://github.com/sakudiff/finlyts-ml-casestudy}.
+
+\subsection{Notebook 01 — Data Acquisition and Pipeline}
+\includepdf[pages=-,
+            pagecommand={\thispagestyle{plain}},
+            fitpaper=true]%
+           {appendices/01_data_pull.pdf}
+
+\subsection{Notebook 02 — Feature Engineering}
+\includepdf[pages=-,
+            pagecommand={\thispagestyle{plain}},
+            fitpaper=true]%
+           {appendices/02_feature_engineering.pdf}
+
+\subsection{Notebook 03 — OLS Baseline Model}
+\includepdf[pages=-,
+            pagecommand={\thispagestyle{plain}},
+            fitpaper=true]%
+           {appendices/03_ols_baseline.pdf}
+
+\subsection{Notebook 04 — Random Forest and XGBoost}
+\includepdf[pages=-,
+            pagecommand={\thispagestyle{plain}},
+            fitpaper=true]%
+           {appendices/04_models_rf_xgboost.pdf}
+
+\subsection{Notebook 05 — Support Vector Machine and ANN}
+\includepdf[pages=-,
+            pagecommand={\thispagestyle{plain}},
+            fitpaper=true]%
+           {appendices/05_models_svm_ann.pdf}
+
+\subsection{Notebook 06 — Final Evaluation and Comparison}
+\includepdf[pages=-,
+            pagecommand={\thispagestyle{plain}},
+            fitpaper=true]%
+           {appendices/06_evaluation.pdf}
 
 \end{document}
-ment}
